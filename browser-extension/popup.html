@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { font: 13px system-ui, sans-serif; width: 360px; margin: 12px; color: #222; }
+      h1 { font-size: 14px; margin: 0 0 8px; }
+      .row { display: flex; gap: 6px; align-items: center; margin: 6px 0; }
+      .dot { width: 9px; height: 9px; border-radius: 50%; background: #8a8886; }
+      .dot.connected { background: #107c10; }
+      .dot.connecting { background: #ca5010; }
+      input[type="number"] { width: 80px; }
+      textarea { width: 100%; height: 220px; font: 11px ui-monospace, monospace; box-sizing: border-box; }
+      .muted { color: #666; }
+      button { cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <h1>Power Apps ↔ VS Code</h1>
+    <div class="row"><span id="dot" class="dot"></span><span id="state">…</span></div>
+    <div class="row muted" id="info"></div>
+    <div class="row">
+      Port <input id="port" type="number" min="1" max="65535" />
+      <button id="save">Enregistrer</button>
+      <button id="reconnect">Reconnecter</button>
+    </div>
+    <hr />
+    <div class="row">
+      <button id="diag">Diagnostic de la page</button>
+      <button id="copy" hidden>Copier</button>
+    </div>
+    <textarea id="out" hidden readonly></textarea>
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,72 @@
+{
+  "name": "Power Fx",
+  "scopeName": "source.powerfx",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#quoted-identifiers" },
+    { "include": "#numbers" },
+    { "include": "#constants" },
+    { "include": "#keywords" },
+    { "include": "#functions" },
+    { "include": "#operators" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        { "name": "comment.line.double-slash.powerfx", "match": "//.*$" },
+        { "name": "comment.block.powerfx", "begin": "/\\*", "end": "\\*/" }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.interpolated.powerfx",
+          "begin": "\\$\"",
+          "end": "\"(?!\")",
+          "patterns": [
+            { "name": "constant.character.escape.powerfx", "match": "\"\"|\\{\\{|\\}\\}" },
+            {
+              "name": "meta.interpolation.powerfx",
+              "begin": "\\{",
+              "end": "\\}",
+              "beginCaptures": { "0": { "name": "punctuation.section.interpolation.begin.powerfx" } },
+              "endCaptures": { "0": { "name": "punctuation.section.interpolation.end.powerfx" } },
+              "patterns": [{ "include": "$self" }]
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.double.powerfx",
+          "begin": "\"",
+          "end": "\"(?!\")",
+          "patterns": [{ "name": "constant.character.escape.powerfx", "match": "\"\"" }]
+        }
+      ]
+    },
+    "quoted-identifiers": {
+      "name": "variable.other.quoted.powerfx",
+      "match": "'[^']*'"
+    },
+    "numbers": {
+      "name": "constant.numeric.powerfx",
+      "match": "\\b\\d+(\\.\\d+)?([eE][+-]?\\d+)?\\b"
+    },
+    "constants": {
+      "name": "constant.language.powerfx",
+      "match": "\\b(true|false|Blank|Self|Parent|ThisItem|ThisRecord|App|Host)\\b"
+    },
+    "keywords": {
+      "name": "keyword.operator.word.powerfx",
+      "match": "\\b(And|Or|Not|In|Exactin|As)\\b"
+    },
+    "functions": {
+      "name": "entity.name.function.powerfx",
+      "match": "\\b[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*(?=\\s*\\()"
+    },
+    "operators": {
+      "name": "keyword.operator.powerfx",
+      "match": "<>|<=|>=|&&|\\|\\||[=<>+\\-*/^&!@%;]"
+    }
+  }
+}

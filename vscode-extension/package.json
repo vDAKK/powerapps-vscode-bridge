@@ -1,0 +1,62 @@
+{
+  "name": "powerapps-bridge",
+  "displayName": "Power Apps Bridge",
+  "description": "Live two-way sync between the Power Apps Studio formula bar (browser) and VS Code.",
+  "publisher": "local",
+  "version": "0.1.0",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Programming Languages", "Other"],
+  "main": "./extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "powerfx",
+        "aliases": ["Power Fx", "powerfx"],
+        "extensions": [".fx"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "powerfx",
+        "scopeName": "source.powerfx",
+        "path": "./syntaxes/powerfx.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      { "command": "powerappsBridge.restart", "title": "Power Apps Bridge: Restart server" },
+      { "command": "powerappsBridge.toggleFollow", "title": "Power Apps Bridge: Toggle follow selection" },
+      { "command": "powerappsBridge.showLog", "title": "Power Apps Bridge: Show log" }
+    ],
+    "configuration": {
+      "title": "Power Apps Bridge",
+      "properties": {
+        "powerappsBridge.port": {
+          "type": "number",
+          "default": 8765,
+          "description": "Local WebSocket port the browser extension connects to (127.0.0.1 only)."
+        },
+        "powerappsBridge.followSelection": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open the formula of the control/property selected in Power Apps Studio automatically."
+        }
+      }
+    },
+    "configurationDefaults": {
+      "[powerfx]": {
+        "files.trimTrailingWhitespace": false,
+        "files.insertFinalNewline": false,
+        "files.trimFinalNewlines": false,
+        "editor.formatOnSave": false
+      }
+    }
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
