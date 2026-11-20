@@ -262,6 +262,9 @@ const appErrorUris = new Set();
 function exportApp({ quiet = false } = {}) {
   if (exporting) return exporting;
   exporting = (async () => {
+    // Studio commits a confirmed edit about a second later: don't read the app before it has.
+    const wait = lastConfirmedAt + 2000 - Date.now();
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
     const res = await request('exportApp', {}, 180000);
     const root = mirrorRoot();
     const seen = new Set();
@@ -278,7 +281,7 @@ function exportApp({ quiet = false } = {}) {
           const uri = formulaUri(c.name, property);
           meta.set(uri.toString(), { control: c.name, property });
           seen.add(uri.path);
-          await applyRemote(uri, text);
+          await applyRemote(uri, text, { fromStudio: true });
           formulas++;
         }
       }
@@ -684,6 +687,11 @@ let errorsRefreshTimer = null;
 const unsentEdits = new Map(); // uri string -> { uri, m, text }: edits made while the browser was away
 
 function flushUnsentEdits() {
+  // Edits sent but never confirmed (the connection dropped before Studio's answer): send them again.
+  // Sending the same text twice is harmless if Studio had already applied it.
+  for (const [key, f] of inFlight) {
+    if (!f.confirmed && Date.now() <= f.until && !unsentEdits.has(key)) unsentEdits.set(key, { uri: f.uri, m: f.m, text: f.text });
+  }
   if (!unsentEdits.size || !pickClient()) return;
   log(`Sending ${unsentEdits.size} edit(s) made while disconnected`);
   for (const { uri, m, text } of [...unsentEdits.values()]) pushFormula(uri, m, text);
@@ -714,8 +722,20 @@ async function handleMessage(ws, msg) {
       activeClient = ws;
       await onRemoteFormula(msg);
       break;
-    case 'result':
-      awaitingResult.delete(formulaUri(msg.control, msg.property).toString());
+    case 'result': {
+      const rkey = formulaUri(msg.control, msg.property).toString();
+      awaitingResult.delete(rkey);
+      const f = inFlight.get(rkey);
+      if (f && msg.ok) {
+        // Studio commits about a second later: keep ignoring its old text for a little while.
+        f.confirmed = true;
+        f.until = Date.now() + SETTLE_MS;
+        lastConfirmedAt = Date.now();
+        await applyRemote(f.uri, f.text); // undo any stale echo that slipped through
+      } else if (f) {
+        inFlight.delete(rkey); // refused: Studio still has its own text, which is the truth
+      }
+    }
       if (diskResults.has(`${msg.control}.${msg.property}`)) {
         diskResults.set(`${msg.control}.${msg.property}`, {
           ok: !!msg.ok,
@@ -769,13 +789,13 @@ async function onSelection(msg) {
   }
   log(`Selected ${msg.control}.${msg.property} (${msg.mode || '?'})`);
   const text = msg.formula ?? '';
-  await applyRemote(uri, text);
+  await applyRemote(uri, text, { fromStudio: true });
   if (config().get('followSelection', true)) {
     const active = vscode.window.activeTextEditor;
     if (!active || active.document.uri.toString() !== uri.toString()) {
       const doc = await vscode.workspace.openTextDocument(uri);
       await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: false });
-      await applyRemote(uri, text); // the document may have been cached with stale text
+      await applyRemote(uri, text, { fromStudio: true }); // the document may have been cached with stale text
     }
     await closeOtherFormulaTabs(uri);
   }
@@ -800,14 +820,35 @@ async function closeOtherFormulaTabs(keep) {
 
 async function onRemoteFormula(msg) {
   const uri = remember(msg);
-  await applyRemote(uri, msg.formula ?? '');
+  await applyRemote(uri, msg.formula ?? '', { fromStudio: true });
   propsView.refreshView(); // formula preview
   if (screenPreview.visible) screenPreview.schedule(1500); // the screen may look different now
 }
 
+/**
+ * Formulas sent to Studio and not yet settled: uri string -> { text, m, until, confirmed }.
+ * While Studio switches to a formula it first reports the OLD text, and it commits an edit about a second
+ * after confirming it: during that window, a different text coming from Studio must not overwrite ours.
+ */
+const inFlight = new Map();
+const IN_FLIGHT_MS = 60000; // waiting for Studio's answer (navigation can be slow)
+const SETTLE_MS = 4000; // after Studio confirmed: its echoes/exports may still show the old text
+let lastConfirmedAt = 0;
+
+function isStaleEcho(key, text) {
+  const f = inFlight.get(key);
+  if (!f) return false;
+  if (Date.now() > f.until) {
+    inFlight.delete(key);
+    return false;
+  }
+  return text !== f.text;
+}
+
 /** Push text coming from Studio into the in-memory FS and into the open document, if any. */
-async function applyRemote(uri, text) {
+async function applyRemote(uri, text, { fromStudio = false } = {}) {
   const key = uri.toString();
+  if (fromStudio && isStaleEcho(key, text)) return; // old text reported before our edit is committed
   remoteText.set(key, text);
   fsProvider.setText(uri, text);
   mirrorFormula(uri, text);
@@ -874,6 +915,7 @@ function pushFormula(uri, m, text) {
     return;
   }
   unsentEdits.delete(uri.toString());
+  inFlight.set(uri.toString(), { uri, m, text, until: Date.now() + IN_FLIGHT_MS, confirmed: false });
   awaitingResult.set(uri.toString(), Date.now());
   if (screenPreview.visible) screenPreview.schedule(1500);
   target.send(
