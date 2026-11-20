@@ -4,12 +4,19 @@ async function refresh() {
   const s = await chrome.runtime.sendMessage({ type: 'getStatus' });
   $('dot').className = `dot ${s.state}`;
   $('state').textContent =
-    { connected: 'Connecté à VS Code', connecting: 'Connexion…', disconnected: 'Déconnecté' }[s.state] || s.state;
+    { connected: 'Connecté à VS Code', connecting: 'Connexion à VS Code…', disconnected: 'Déconnecté de VS Code' }[s.state] ||
+    s.state;
   $('info').textContent = s.lastInfo
-    ? `${s.lastInfo.control}.${s.lastInfo.property} (${s.lastInfo.mode})`
+    ? `Sélection : ${s.lastInfo.control}.${s.lastInfo.property} (${s.lastInfo.mode})`
     : s.frames
       ? 'Studio détecté, aucune sélection'
-      : 'Aucune barre de formule détectée (ouvre une app dans Power Apps Studio)';
+      : 'Aucune barre de formule détectée';
+  let hint = '';
+  if (!s.frames) hint = 'Ouvre une canvas app en modification dans Power Apps Studio (make.powerapps.com).';
+  else if (s.state !== 'connected')
+    hint = `VS Code n'écoute pas sur le port ${s.port}. Vérifie que l'extension « Power Apps X VS Code » est installée dans VS Code et que le port est le même des deux côtés, puis clique sur Reconnecter.`;
+  else if (!s.lastInfo) hint = 'Sélectionne un contrôle dans Studio : sa formule s’ouvre dans VS Code.';
+  $('hint').textContent = hint;
 }
 
 (async () => {

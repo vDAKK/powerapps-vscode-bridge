@@ -1,5 +1,5 @@
 // Service worker: owns the WebSocket to VS Code and routes messages to/from the Studio frame.
-const VERSION = '0.1.0';
+const VERSION = chrome.runtime.getManifest().version;
 const DEFAULT_PORT = 8765;
 
 let ws = null;
@@ -61,6 +61,11 @@ async function connect() {
       } catch {
         return;
       }
+      if (msg.type === 'heartbeat') {
+        // VS Code's keep-alive: answering keeps this service worker (and the socket) from being suspended.
+        sock.send('{"type":"ping"}');
+        return;
+      }
       if (activePort && ports.has(activePort)) activePort.postMessage(msg);
       else broadcast(msg);
     };
@@ -114,7 +119,7 @@ chrome.storage.onChanged.addListener((changes) => {
   if (changes.port && ws) ws.close(); // onclose -> reconnect on the new port
 });
 
-// Keep the WebSocket (and thus the service worker) alive.
+// Keep the WebSocket (and thus the service worker) alive: Chrome suspends an idle worker after ~30 s.
 setInterval(() => {
   if (ws && ws.readyState === 1) ws.send('{"type":"ping"}');
-}, 20000);
+}, 10000);

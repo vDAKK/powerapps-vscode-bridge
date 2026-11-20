@@ -1,0 +1,103 @@
+{
+  "If / else": {
+    "prefix": "if",
+    "body": ["If(", "    ${1:condition},", "    ${2:alors},", "    ${3:sinon}", ")"],
+    "description": "If(condition, alors, sinon)"
+  },
+  "Switch": {
+    "prefix": "switch",
+    "body": ["Switch(", "    ${1:valeur},", "    ${2:cas1}, ${3:résultat1},", "    ${4:cas2}, ${5:résultat2},", "    ${6:défaut}", ")"],
+    "description": "Switch(valeur, cas, résultat, …, défaut)"
+  },
+  "Patch (nouvel enregistrement)": {
+    "prefix": "patchnew",
+    "body": ["Patch(", "    ${1:Source},", "    Defaults(${1:Source}),", "    {", "        ${2:Colonne}: ${3:valeur}", "    }", ")"],
+    "description": "Crée un enregistrement dans une source"
+  },
+  "Patch (modifier)": {
+    "prefix": "patch",
+    "body": ["Patch(", "    ${1:Source},", "    ${2:LookUp(${1:Source}, ID = ${3:id})},", "    {", "        ${4:Colonne}: ${5:valeur}", "    }", ")"],
+    "description": "Modifie un enregistrement d'une source"
+  },
+  "Patch protégé (IfError + Notify)": {
+    "prefix": "patchsafe",
+    "body": [
+      "IfError(",
+      "    Patch(${1:Source}, ${2:Defaults(${1:Source})}, {${3:Colonne}: ${4:valeur}});",
+      "    Notify(\"${5:Enregistré}\", NotificationType.Success),",
+      "    Notify(\"${6:Erreur : }\" & FirstError.Message, NotificationType.Error)",
+      ")"
+    ],
+    "description": "Patch avec notification de succès / d'erreur"
+  },
+  "ForAll": {
+    "prefix": "forall",
+    "body": ["ForAll(", "    ${1:Table} As ${2:item},", "    ${3:formule}", ")"],
+    "description": "ForAll avec alias"
+  },
+  "With": {
+    "prefix": "with",
+    "body": ["With(", "    {", "        ${1:nom}: ${2:valeur}", "    },", "    ${3:formule}", ")"],
+    "description": "Valeurs nommées locales"
+  },
+  "LookUp": {
+    "prefix": "lookup",
+    "body": ["LookUp(${1:Source}, ${2:Colonne} = ${3:valeur})"],
+    "description": "Premier enregistrement qui vérifie la condition"
+  },
+  "Filter + Sort": {
+    "prefix": "filtersort",
+    "body": ["SortByColumns(", "    Filter(", "        ${1:Source},", "        ${2:condition}", "    ),", "    \"${3:Colonne}\",", "    SortOrder.${4|Ascending,Descending|}", ")"],
+    "description": "Filtrer puis trier"
+  },
+  "Search + Filter": {
+    "prefix": "search",
+    "body": ["Search(", "    Filter(${1:Source}, ${2:condition}),", "    ${3:txtSearch}.Text,", "    ${4:Colonne}", ")"],
+    "description": "Recherche texte sur une table filtrée"
+  },
+  "ClearCollect": {
+    "prefix": "clearcollect",
+    "body": ["ClearCollect(", "    ${1:colNom},", "    ${2:Source}", ")"],
+    "description": "Vide puis remplit une collection"
+  },
+  "Concurrent": {
+    "prefix": "concurrent",
+    "body": ["Concurrent(", "    ${1:action1},", "    ${2:action2}", ")"],
+    "description": "Exécute des actions en parallèle"
+  },
+  "Set": {
+    "prefix": "set",
+    "body": ["Set(${1:varNom}, ${2:valeur})"],
+    "description": "Variable globale"
+  },
+  "UpdateContext": {
+    "prefix": "ctx",
+    "body": ["UpdateContext({${1:locNom}: ${2:valeur}})"],
+    "description": "Variable de contexte de l'écran"
+  },
+  "Navigate": {
+    "prefix": "nav",
+    "body": ["Navigate(${1:Écran}, ScreenTransition.${2|None,Fade,Cover,CoverRight,UnCover,UnCoverRight|})"],
+    "description": "Navigation vers un écran"
+  },
+  "Notify": {
+    "prefix": "notify",
+    "body": ["Notify(\"${1:message}\", NotificationType.${2|Success,Error,Warning,Information|})"],
+    "description": "Bannière de notification"
+  },
+  "Formulaire : soumettre": {
+    "prefix": "submit",
+    "body": ["If(", "    ${1:frmForm}.Valid,", "    SubmitForm(${1:frmForm}),", "    Notify(\"${2:Formulaire incomplet}\", NotificationType.Warning)", ")"],
+    "description": "Soumet le formulaire s'il est valide"
+  },
+  "Texte : date": {
+    "prefix": "textdate",
+    "body": ["Text(${1:Date}, \"${2:dd/mm/yyyy}\")"],
+    "description": "Date formatée"
+  },
+  "Couleur RGBA": {
+    "prefix": "rgba",
+    "body": ["RGBA(${1:0}, ${2:0}, ${3:0}, ${4:1})"],
+    "description": "Couleur"
+  }
+}

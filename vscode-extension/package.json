@@ -1,22 +1,52 @@
 {
   "name": "powerapps-bridge",
-  "displayName": "Power Apps Bridge",
-  "description": "Live two-way sync between the Power Apps Studio formula bar (browser) and VS Code.",
+  "displayName": "Power Apps X VS Code",
+  "description": "Live two-way sync between the Power Apps Studio formula bar (browser) and VS Code. Unofficial, not affiliated with Microsoft.",
   "publisher": "local",
-  "version": "0.1.0",
+  "version": "0.6.0",
   "license": "MIT",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#4C3BCF",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vDAKK/powerapps-vscode-bridge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vDAKK/powerapps-vscode-bridge/issues"
+  },
+  "homepage": "https://github.com/vDAKK/powerapps-vscode-bridge#readme",
+  "keywords": [
+    "power apps",
+    "power fx",
+    "canvas app",
+    "power platform",
+    "low-code"
+  ],
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Programming Languages", "Other"],
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
   "main": "./extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "languages": [
       {
         "id": "powerfx",
-        "aliases": ["Power Fx", "powerfx"],
-        "extensions": [".fx"],
+        "aliases": [
+          "Power Fx",
+          "powerfx"
+        ],
+        "extensions": [
+          ".fx"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -28,12 +58,117 @@
       }
     ],
     "commands": [
-      { "command": "powerappsBridge.restart", "title": "Power Apps Bridge: Restart server" },
-      { "command": "powerappsBridge.toggleFollow", "title": "Power Apps Bridge: Toggle follow selection" },
-      { "command": "powerappsBridge.showLog", "title": "Power Apps Bridge: Show log" }
+      {
+        "command": "powerappsBridge.restart",
+        "title": "Power Apps X VS Code: Restart server"
+      },
+      {
+        "command": "powerappsBridge.toggleFollow",
+        "title": "Power Apps X VS Code: Toggle follow selection"
+      },
+      {
+        "command": "powerappsBridge.showLog",
+        "title": "Power Apps X VS Code: Show log"
+      },
+      {
+        "command": "powerappsBridge.goToFormula",
+        "title": "Power Apps X VS Code: Go to formula (Control.Property)",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "powerappsBridge.goToProperty",
+        "title": "Power Apps X VS Code: Go to property of current control",
+        "icon": "$(symbol-property)"
+      },
+      {
+        "command": "powerappsBridge.goToControl",
+        "title": "Power Apps X VS Code: Rechercher un contrôle…",
+        "icon": "$(search)"
+      },
+      {
+        "command": "powerappsBridge.refreshTree",
+        "title": "Power Apps X VS Code: Recharger toute l’arborescence",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "powerappsBridge.expandTree",
+        "title": "Power Apps X VS Code: Expand all in Studio and refresh",
+        "icon": "$(expand-all)"
+      },
+      {
+        "command": "powerappsBridge.selectControl",
+        "title": "Power Apps X VS Code: Select control in Studio"
+      },
+      {
+        "command": "powerappsBridge.openFormula",
+        "title": "Power Apps X VS Code: Open formula"
+      },
+      {
+        "command": "powerappsBridge.loadProperties",
+        "title": "Power Apps X VS Code: Load properties of selected control",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "powerappsBridge.showPreview",
+        "title": "Power Apps X VS Code: Show screen preview",
+        "icon": "$(device-desktop)"
+      },
+      {
+        "command": "powerappsBridge.revealInPreview",
+        "title": "Show in screen preview",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "powerappsBridge.copyName",
+        "title": "Copy name"
+      },
+      {
+        "command": "powerappsBridge.help",
+        "title": "Power Apps X VS Code: Help and actions…",
+        "icon": "$(question)"
+      },
+      {
+        "command": "powerappsBridge.openWalkthrough",
+        "title": "Power Apps X VS Code: Getting started"
+      },
+      {
+        "command": "powerappsBridge.exportApp",
+        "title": "Power Apps X VS Code: Exporter toute l'app (formules + erreurs)",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "powerappsBridge.renameControl",
+        "title": "Renommer…",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "powerappsBridge.pickProperty",
+        "title": "Ouvrir une propriété…",
+        "icon": "$(symbol-property)"
+      },
+      {
+        "command": "powerappsBridge.suggestNames",
+        "title": "Power Apps X VS Code: Renommer les contrôles aux noms par défaut…",
+        "icon": "$(symbol-key)"
+      },
+      {
+        "command": "powerappsBridge.searchFormulas",
+        "title": "Power Apps X VS Code: Rechercher dans toutes les formules…",
+        "icon": "$(search)"
+      },
+      {
+        "command": "powerappsBridge.findUsages",
+        "title": "Trouver les références",
+        "icon": "$(references)"
+      },
+      {
+        "command": "powerappsBridge.runLint",
+        "title": "Power Apps X VS Code: Analyse de nettoyage (variables, collections, contrôles inutilisés)",
+        "icon": "$(lightbulb)"
+      }
     ],
     "configuration": {
-      "title": "Power Apps Bridge",
+      "title": "Power Apps X VS Code",
       "properties": {
         "powerappsBridge.port": {
           "type": "number",
@@ -44,6 +179,47 @@
           "type": "boolean",
           "default": true,
           "description": "Open the formula of the control/property selected in Power Apps Studio automatically."
+        },
+        "powerappsBridge.navigateOnEdit": {
+          "type": "boolean",
+          "default": true,
+          "description": "When you edit a formula that is not the one shown in Studio, switch Studio to it before writing (instead of refusing the edit)."
+        },
+        "powerappsBridge.singleTab": {
+          "type": "boolean",
+          "default": true,
+          "description": "Keep a single formula tab: switching control/property in Studio closes the previous formula tab (pinned tabs are kept)."
+        },
+        "powerappsBridge.mirrorFolder": {
+          "type": "string",
+          "default": ".powerapps",
+          "markdownDescription": "Workspace folder on disk, so you and tools that work on real files (e.g. an AI assistant) can read and edit the app. Relative paths resolve against the first workspace folder. Writes `<Control>/<Control>.<Property>.fx`, `_app.json` (every control: type, screen, properties, formula files), `_state.json` (connection, selection, Studio errors, results of disk edits) and a `CLAUDE.md` guide. The folder git-ignores itself. Empty = disabled."
+        },
+        "powerappsBridge.exportOnConnect": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "When Studio connects, read every formula of the app (Studio's \"Copy code\" YAML of each screen, no navigation) into the workspace folder, plus the app-wide formula errors."
+        },
+        "powerappsBridge.syncFromDisk": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Send a `.fx` file of the workspace folder (`#powerappsBridge.mirrorFolder#`) to Studio when it is saved, by you or by a tool. Off = the folder is a read-only copy."
+        },
+        "powerappsBridge.loadFullTree": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "When Studio connects, load **every** control of the app (Studio's tree view is expanded and scrolled briefly, then put back as it was). Off = only the rows visible in Studio's tree view."
+        },
+        "powerappsBridge.lint": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Signale dans la vue Problèmes les variables, collections et formules nommées jamais lues, et les contrôles masqués jamais référencés (aussi écrits dans `_lint.json` du dossier de travail)."
+        },
+        "powerappsBridge.formatWidth": {
+          "type": "number",
+          "default": 80,
+          "minimum": 40,
+          "description": "Largeur de ligne visée par le formatage Power Fx (Maj+Alt+F)."
         }
       }
     },
@@ -54,7 +230,290 @@
         "files.trimFinalNewlines": false,
         "editor.formatOnSave": false
       }
-    }
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "powerappsBridge.goToProperty",
+          "when": "resourceScheme == powerfx",
+          "group": "navigation@1"
+        },
+        {
+          "command": "powerappsBridge.goToControl",
+          "when": "resourceScheme == powerfx",
+          "group": "navigation@2"
+        },
+        {
+          "command": "powerappsBridge.showPreview",
+          "when": "resourceScheme == powerfx",
+          "group": "navigation@3"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "powerappsBridge.showPreview",
+          "when": "view == powerappsBridge.tree",
+          "group": "navigation@0"
+        },
+        {
+          "command": "powerappsBridge.goToControl",
+          "when": "view == powerappsBridge.tree",
+          "group": "navigation@0"
+        },
+        {
+          "command": "powerappsBridge.refreshTree",
+          "when": "view == powerappsBridge.tree",
+          "group": "navigation@1"
+        },
+        {
+          "command": "powerappsBridge.expandTree",
+          "when": "view == powerappsBridge.tree",
+          "group": "navigation@2"
+        },
+        {
+          "command": "powerappsBridge.goToFormula",
+          "when": "view == powerappsBridge.tree",
+          "group": "navigation@3"
+        },
+        {
+          "command": "powerappsBridge.loadProperties",
+          "when": "view == powerappsBridge.props",
+          "group": "navigation@1"
+        },
+        {
+          "command": "powerappsBridge.help",
+          "when": "view == powerappsBridge.tree",
+          "group": "navigation@9"
+        },
+        {
+          "command": "powerappsBridge.searchFormulas",
+          "when": "view == powerappsBridge.tree",
+          "group": "navigation@4"
+        },
+        {
+          "command": "powerappsBridge.exportApp",
+          "when": "view == powerappsBridge.tree",
+          "group": "navigation@5"
+        },
+        {
+          "command": "powerappsBridge.suggestNames",
+          "when": "view == powerappsBridge.tree",
+          "group": "1_tools@1"
+        },
+        {
+          "command": "powerappsBridge.runLint",
+          "when": "view == powerappsBridge.tree",
+          "group": "1_tools@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "powerappsBridge.selectControl",
+          "when": "false"
+        },
+        {
+          "command": "powerappsBridge.openFormula",
+          "when": "false"
+        },
+        {
+          "command": "powerappsBridge.revealInPreview",
+          "when": "false"
+        },
+        {
+          "command": "powerappsBridge.copyName",
+          "when": "false"
+        },
+        {
+          "command": "powerappsBridge.renameControl",
+          "when": "powerappsBridge.connected"
+        },
+        {
+          "command": "powerappsBridge.pickProperty",
+          "when": "powerappsBridge.connected"
+        },
+        {
+          "command": "powerappsBridge.findUsages",
+          "when": "false"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "powerappsBridge.revealInPreview",
+          "when": "view == powerappsBridge.tree && viewItem == control",
+          "group": "inline"
+        },
+        {
+          "command": "powerappsBridge.revealInPreview",
+          "when": "view == powerappsBridge.tree && viewItem == control",
+          "group": "1_nav@1"
+        },
+        {
+          "command": "powerappsBridge.copyName",
+          "when": "view == powerappsBridge.tree && viewItem == control",
+          "group": "9_copy@1"
+        },
+        {
+          "command": "powerappsBridge.pickProperty",
+          "when": "view == powerappsBridge.tree && viewItem == control",
+          "group": "inline@0"
+        },
+        {
+          "command": "powerappsBridge.pickProperty",
+          "when": "view == powerappsBridge.tree && viewItem == control",
+          "group": "1_nav@2"
+        },
+        {
+          "command": "powerappsBridge.renameControl",
+          "when": "view == powerappsBridge.tree && viewItem == control",
+          "group": "2_edit@1"
+        },
+        {
+          "command": "powerappsBridge.findUsages",
+          "when": "view == powerappsBridge.tree && viewItem == control",
+          "group": "1_nav@3"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "powerappsBridge.goToFormula",
+        "key": "ctrl+alt+g"
+      },
+      {
+        "command": "powerappsBridge.goToProperty",
+        "key": "ctrl+alt+p",
+        "when": "resourceScheme == powerfx"
+      },
+      {
+        "command": "powerappsBridge.renameControl",
+        "key": "f2",
+        "when": "focusedView == powerappsBridge.tree"
+      },
+      {
+        "command": "powerappsBridge.goToControl",
+        "key": "ctrl+alt+f",
+        "when": "powerappsBridge.connected"
+      },
+      {
+        "command": "powerappsBridge.searchFormulas",
+        "key": "ctrl+alt+shift+f",
+        "when": "powerappsBridge.connected"
+      }
+    ],
+    "views": {
+      "powerapps": [
+        {
+          "id": "powerappsBridge.tree",
+          "name": "Arborescence"
+        },
+        {
+          "id": "powerappsBridge.props",
+          "name": "Propriétés"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "powerappsBridge.tree",
+        "when": "!powerappsBridge.connected",
+        "contents": "En attente de Power Apps Studio.\n\n1. Installe l’extension navigateur « Power Apps X VS Code » (Chrome, Edge ou Firefox).\n2. Ouvre ta canvas app en modification dans Power Apps Studio.\n3. Sélectionne un contrôle : sa formule s’ouvre ici.\n[Guide de démarrage](command:powerappsBridge.openWalkthrough)\n[Ouvrir Power Apps](https://make.powerapps.com/)\nProblème de connexion ? [Afficher le journal](command:powerappsBridge.showLog) ou [redémarrer le serveur](command:powerappsBridge.restart)."
+      },
+      {
+        "view": "powerappsBridge.tree",
+        "when": "powerappsBridge.connected",
+        "contents": "Studio est connecté, mais son arborescence n’est pas visible. Affiche le panneau Arborescence dans Studio, puis :\n[Rafraîchir](command:powerappsBridge.refreshTree)\n[Aperçu de l’écran](command:powerappsBridge.showPreview)"
+      },
+      {
+        "view": "powerappsBridge.props",
+        "when": "!powerappsBridge.connected",
+        "contents": "Les propriétés du contrôle sélectionné apparaîtront ici une fois Studio connecté."
+      },
+      {
+        "view": "powerappsBridge.props",
+        "when": "powerappsBridge.connected",
+        "contents": "Sélectionne un contrôle dans l’arborescence, dans l’aperçu ou dans Studio."
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "powerapps",
+          "title": "Power Apps",
+          "icon": "media/powerapps.svg"
+        }
+      ]
+    },
+    "walkthroughs": [
+      {
+        "id": "powerappsBridge.start",
+        "title": "Prise en main de Power Apps X VS Code",
+        "description": "Modifier les formules de Power Apps Studio depuis VS Code, en direct.",
+        "steps": [
+          {
+            "id": "connect",
+            "title": "Connecter Power Apps Studio",
+            "description": "Installe l’extension navigateur **Power Apps X VS Code** (Chrome, Edge ou Firefox), puis ouvre ta canvas app en modification dans Studio. La barre d’état de VS Code passe de « Power Apps » barré à « connecté ».\n[Ouvrir Power Apps](https://make.powerapps.com/)\n[Afficher le journal](command:powerappsBridge.showLog)",
+            "media": {
+              "markdown": "media/walkthrough/connect.md"
+            },
+            "completionEvents": [
+              "onContext:powerappsBridge.connected"
+            ]
+          },
+          {
+            "id": "select",
+            "title": "Sélectionner un contrôle",
+            "description": "Clique sur un contrôle dans Studio : sa formule s’ouvre dans VS Code. Tape dans VS Code et Studio se met à jour (et inversement). Les erreurs de Studio apparaissent dans le panneau **Problèmes**.",
+            "media": {
+              "markdown": "media/walkthrough/select.md"
+            },
+            "completionEvents": [
+              "onContext:powerappsBridge.hasSelection"
+            ]
+          },
+          {
+            "id": "preview",
+            "title": "Voir l’écran",
+            "description": "L’aperçu montre l’écran courant de Studio. Clique sur un élément pour le sélectionner et ouvrir sa formule, cherche un contrôle par son nom, change d’écran.\n[Ouvrir l’aperçu](command:powerappsBridge.showPreview)",
+            "media": {
+              "markdown": "media/walkthrough/preview.md"
+            },
+            "completionEvents": [
+              "onCommand:powerappsBridge.showPreview"
+            ]
+          },
+          {
+            "id": "navigate",
+            "title": "Naviguer sans la souris",
+            "description": "**Ctrl+Alt+G** : aller à n’importe quelle formule (`Contrôle.Propriété`).\n**Ctrl+Alt+P** : changer de propriété du contrôle courant.\n**Ctrl+clic** sur un nom de contrôle dans une formule : le sélectionner dans Studio.\n[Aller à une formule](command:powerappsBridge.goToFormula)",
+            "media": {
+              "markdown": "media/walkthrough/navigate.md"
+            },
+            "completionEvents": [
+              "onCommand:powerappsBridge.goToFormula",
+              "onCommand:powerappsBridge.goToProperty"
+            ]
+          },
+          {
+            "id": "sidebar",
+            "title": "Explorer l’app",
+            "description": "La barre latérale **Power Apps** liste les écrans et les contrôles, puis les propriétés du contrôle sélectionné avec un aperçu de leurs formules. Les icônes rouges signalent les erreurs.\n[Ouvrir la barre latérale](command:workbench.view.extension.powerapps)",
+            "media": {
+              "markdown": "media/walkthrough/sidebar.md"
+            },
+            "completionEvents": [
+              "onView:powerappsBridge.tree"
+            ]
+          }
+        ]
+      }
+    ],
+    "snippets": [
+      {
+        "language": "powerfx",
+        "path": "./snippets/powerfx.json"
+      }
+    ]
   },
   "dependencies": {
     "ws": "^8.18.0"
