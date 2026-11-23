@@ -1,42 +1,293 @@
 <!doctype html>
-<html>
+<html lang="fr">
   <head>
     <meta charset="utf-8" />
+    <title>Power Apps X VS Code</title>
     <style>
-      body { font: 13px system-ui, sans-serif; width: 360px; margin: 12px; color: #222; }
-      h1 { font-size: 14px; margin: 0 0 8px; }
-      .row { display: flex; gap: 6px; align-items: center; margin: 6px 0; }
-      .dot { width: 9px; height: 9px; border-radius: 50%; background: #8a8886; flex: none; }
-      .dot.connected { background: #107c10; }
-      .dot.connecting { background: #ca5010; }
-      input[type="number"] { width: 80px; }
-      textarea { width: 100%; height: 220px; font: 11px ui-monospace, monospace; box-sizing: border-box; }
-      .muted { color: #666; }
-      .hint { background: #f3f2f1; border-radius: 4px; padding: 6px 8px; margin: 6px 0; line-height: 1.4; }
-      .hint:empty { display: none; }
-      button { cursor: pointer; }
-      details summary { cursor: pointer; color: #555; margin-top: 10px; }
+      :root {
+        --brand: #4c3bcf;
+        --brand-hover: #3e2fb3;
+        --brand-soft: #eeecfb;
+        --bg: #ffffff;
+        --surface: #f6f6f8;
+        --border: #e3e3e8;
+        --text: #1b1b1f;
+        --muted: #6b6b76;
+        --ok: #0f7b3f;
+        --ok-soft: #e5f4ec;
+        --warn: #b35900;
+        --warn-soft: #fdf0e1;
+        --off: #8a8a94;
+        --off-soft: #efeff2;
+        --mono: ui-monospace, 'Cascadia Code', 'SF Mono', Consolas, monospace;
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --brand: #8b7ff0;
+          --brand-hover: #a096f4;
+          --brand-soft: #2a2550;
+          --bg: #1c1c21;
+          --surface: #25252c;
+          --border: #34343d;
+          --text: #ececf1;
+          --muted: #9a9aa6;
+          --ok: #4cc38a;
+          --ok-soft: #173326;
+          --warn: #f0a050;
+          --warn-soft: #3a2a17;
+          --off: #8a8a94;
+          --off-soft: #2c2c33;
+          color-scheme: dark;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        width: 340px;
+        margin: 0;
+        font: 13px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif;
+        color: var(--text);
+        background: var(--bg);
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px 12px;
+        border-bottom: 1px solid var(--border);
+      }
+      header img { width: 28px; height: 28px; border-radius: 7px; }
+      header .title { font-weight: 600; font-size: 14px; letter-spacing: -0.01em; }
+      header .version { margin-left: auto; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+      main { padding: 14px 16px 6px; display: grid; gap: 10px; }
+
+      /* Connection status */
+      .status {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 10px;
+        background: var(--off-soft);
+        transition: background 0.2s;
+      }
+      .status[data-state='connected'] { background: var(--ok-soft); }
+      .status[data-state='connecting'] { background: var(--warn-soft); }
+      .dot {
+        position: relative;
+        width: 10px;
+        height: 10px;
+        flex: none;
+        border-radius: 50%;
+        background: var(--off);
+      }
+      [data-state='connected'] .dot { background: var(--ok); }
+      [data-state='connecting'] .dot { background: var(--warn); }
+      [data-state='connected'] .dot::after,
+      [data-state='connecting'] .dot::after {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        border-radius: 50%;
+        border: 2px solid currentColor;
+        color: var(--ok);
+        opacity: 0;
+        animation: pulse 2s ease-out infinite;
+      }
+      [data-state='connecting'] .dot::after { color: var(--warn); animation-duration: 1s; }
+      @keyframes pulse {
+        0% { transform: scale(0.6); opacity: 0.7; }
+        100% { transform: scale(1.5); opacity: 0; }
+      }
+      @media (prefers-reduced-motion: reduce) { .dot::after { animation: none !important; } }
+      .status .label { font-weight: 600; }
+      .status .sub { font-size: 12px; color: var(--muted); }
+
+      /* Current formula */
+      .card {
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+      }
+      .card .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 4px; }
+      .formula {
+        display: flex;
+        align-items: baseline;
+        gap: 0;
+        font: 12.5px var(--mono);
+        overflow: hidden;
+        white-space: nowrap;
+      }
+      .formula .ctrl { overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+      .formula .prop { color: var(--brand); flex: none; }
+      .chip {
+        margin-left: auto;
+        padding: 1px 7px;
+        border-radius: 999px;
+        font: 11px system-ui, sans-serif;
+        color: var(--muted);
+        background: var(--surface);
+        flex: none;
+      }
+
+      /* Next step */
+      .next {
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+        border-radius: 10px;
+        background: var(--brand-soft);
+      }
+      .next p { margin: 0; }
+      .next:has(p:empty) { display: none; }
+
+      button, .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        height: 30px;
+        padding: 0 12px;
+        border-radius: 7px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--text);
+        font: 500 12.5px system-ui, sans-serif;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+      }
+      button:hover { background: var(--surface); }
+      button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+      button.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+      button.primary:hover { background: var(--brand-hover); border-color: var(--brand-hover); }
+      button[hidden] { display: none; }
+
+      /* Settings */
+      details { border-top: 1px solid var(--border); margin-top: 8px; }
+      summary {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 16px;
+        list-style: none;
+        cursor: pointer;
+        color: var(--muted);
+        font-weight: 500;
+        user-select: none;
+      }
+      summary::-webkit-details-marker { display: none; }
+      summary::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-right: 1.5px solid currentColor;
+        border-bottom: 1.5px solid currentColor;
+        transform: rotate(-45deg);
+        transition: transform 0.15s;
+        margin-right: 2px;
+      }
+      details[open] summary::before { transform: rotate(45deg); }
+      summary:hover { color: var(--text); }
+      .panel { display: grid; gap: 12px; padding: 0 16px 14px; }
+      .field { display: grid; gap: 4px; }
+      .field label { font-size: 12px; font-weight: 500; }
+      .field .help { font-size: 11.5px; color: var(--muted); }
+      .inline { display: flex; gap: 6px; align-items: center; }
+      input[type='number'] {
+        width: 90px;
+        height: 30px;
+        padding: 0 8px;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        background: var(--bg);
+        color: var(--text);
+        font: 12.5px var(--mono);
+      }
+      input:invalid { border-color: #d13438; }
+      button.done { color: var(--ok); border-color: var(--ok); }
+      textarea {
+        width: 100%;
+        height: 180px;
+        padding: 8px;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        background: var(--surface);
+        color: var(--text);
+        font: 11px/1.4 var(--mono);
+        resize: vertical;
+      }
+      textarea[hidden] { display: none; }
+      footer {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 16px 12px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      footer a { color: inherit; text-decoration: none; }
+      footer a:hover { color: var(--brand); text-decoration: underline; }
     </style>
   </head>
   <body>
-    <h1>Power Apps X VS Code</h1>
-    <div class="row"><span id="dot" class="dot"></span><span id="state">…</span></div>
-    <div class="row muted" id="info"></div>
-    <div class="hint" id="hint"></div>
+    <header>
+      <img src="icons/icon-32.png" alt="" />
+      <span class="title">Power Apps X VS Code</span>
+      <span class="version" id="version"></span>
+    </header>
 
-    <details>
+    <main>
+      <section class="status" id="status" data-state="disconnected" role="status" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <div>
+          <div class="label" id="state">…</div>
+          <div class="sub" id="sub"></div>
+        </div>
+      </section>
+
+      <section class="card" id="selection" hidden>
+        <div class="k">Formule active</div>
+        <div class="formula">
+          <span class="ctrl" id="ctrl"></span><span class="prop" id="prop"></span>
+          <span class="chip" id="mode"></span>
+        </div>
+      </section>
+
+      <section class="next">
+        <p id="hint"></p>
+        <div class="inline">
+          <button class="primary" id="openStudio" hidden>Ouvrir Power Apps</button>
+          <button class="primary" id="reconnectMain" hidden>Reconnecter</button>
+        </div>
+      </section>
+    </main>
+
+    <details id="settings">
       <summary>Réglages et dépannage</summary>
-      <div class="row">
-        Port <input id="port" type="number" min="1" max="65535" />
-        <button id="save">Enregistrer</button>
-        <button id="reconnect">Reconnecter</button>
+      <div class="panel">
+        <div class="field">
+          <label for="port">Port de VS Code</label>
+          <div class="inline">
+            <input id="port" type="number" min="1" max="65535" required />
+            <button id="save">Enregistrer</button>
+            <button id="reconnect">Reconnecter</button>
+          </div>
+          <div class="help">Doit être identique au réglage <code>powerappsBridge.port</code> de VS Code (8765 par défaut).</div>
+        </div>
+        <div class="field">
+          <label>Diagnostic</label>
+          <div class="inline">
+            <button id="diag">Analyser la page</button>
+            <button id="copy" hidden>Copier le résultat</button>
+          </div>
+          <textarea id="out" hidden readonly aria-label="Résultat du diagnostic"></textarea>
+        </div>
       </div>
-      <div class="row">
-        <button id="diag">Diagnostic de la page</button>
-        <button id="copy" hidden>Copier</button>
-      </div>
-      <textarea id="out" hidden readonly></textarea>
     </details>
+
+    <footer>
+      <span>Extension non officielle</span>
+      <a href="https://github.com/vDAKK/powerapps-vscode-bridge#readme" target="_blank" rel="noopener">Aide</a>
+    </footer>
     <script src="popup.js"></script>
   </body>
 </html>
