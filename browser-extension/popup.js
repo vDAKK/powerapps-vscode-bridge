@@ -29,26 +29,41 @@ async function refresh() {
     $('selection').title = `${info.control}.${info.property}`;
   }
 
+  // Until VS Code has answered once, the likely cause of "disconnected" is that its extension is missing.
+  if (s.state === 'connected') everConnected = true;
+  const needsVs = !everConnected && s.state !== 'connected';
+
   let hint = '';
-  let action = null;
+  const actions = [];
   if (!s.frames) {
-    hint = 'Ouvre une canvas app en modification dans Power Apps Studio.';
-    action = 'openStudio';
+    hint = needsVs
+      ? 'Cette extension fonctionne avec l’extension « Power Apps X VS Code » pour VS Code : installe-la, puis ouvre une canvas app en modification dans Power Apps Studio.'
+      : 'Ouvre une canvas app en modification dans Power Apps Studio.';
+    if (needsVs) actions.push('installVs');
+    actions.push('openStudio');
   } else if (s.state !== 'connected') {
-    hint = `VS Code ne répond pas sur le port ${s.port}. Vérifie que l’extension « Power Apps X VS Code » est installée dans VS Code avec le même port. À la première connexion, VS Code demande d’autoriser ce navigateur : accepte la demande.`;
-    action = 'reconnectMain';
+    hint = needsVs
+      ? `VS Code ne répond pas. Installe l’extension « Power Apps X VS Code » dans VS Code et garde VS Code ouvert. À la première connexion, VS Code demande d’autoriser ce navigateur : accepte.`
+      : `VS Code ne répond pas sur le port ${s.port}. Vérifie que VS Code est ouvert avec l’extension « Power Apps X VS Code » et le même port. Si VS Code demande d’autoriser ce navigateur, accepte.`;
+    if (needsVs) actions.push('installVs');
+    actions.push('reconnectMain');
   } else if (!info) {
     hint = 'Sélectionne un contrôle dans Studio : sa formule s’ouvre dans VS Code.';
   }
   $('hint').textContent = hint;
-  $('openStudio').hidden = action !== 'openStudio';
-  $('reconnectMain').hidden = action !== 'reconnectMain';
+  for (const id of ['installVs', 'openStudio', 'reconnectMain']) {
+    $(id).hidden = !actions.includes(id);
+    $(id).classList.toggle('primary', id === actions[0]); // one main action at a time
+  }
 }
+
+let everConnected = false;
 
 (async () => {
   $('version').textContent = `v${chrome.runtime.getManifest().version}`;
-  const { port } = await chrome.storage.local.get({ port: 8765 });
-  $('port').value = port;
+  const stored = await chrome.storage.local.get({ port: 8765, everConnected: false });
+  $('port').value = stored.port;
+  everConnected = stored.everConnected;
   refresh();
   setInterval(refresh, 1000);
 })();
@@ -73,6 +88,8 @@ const reconnect = () => chrome.runtime.sendMessage({ type: 'reconnect' }).then(r
 $('reconnect').onclick = reconnect;
 $('reconnectMain').onclick = reconnect;
 $('openStudio').onclick = () => chrome.tabs.create({ url: 'https://make.powerapps.com/' });
+// The welcome page offers both "open in VS Code" (vscode: link) and the Marketplace page.
+$('installVs').onclick = () => chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
 
 $('diag').onclick = async () => {
   const out = $('out');

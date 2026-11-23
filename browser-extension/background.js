@@ -51,6 +51,7 @@ async function connect() {
     sock.onopen = () => {
       backoff = 1000;
       setState('connected');
+      chrome.storage.local.set({ everConnected: true }); // the popup stops suggesting to install VS Code's side
       sock.send(JSON.stringify({ type: 'hello', version: VERSION }));
       broadcast({ type: 'resync' }); // page.js re-announces the current selection
     };
@@ -113,6 +114,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     else connect();
     sendResponse({ ok: true });
   }
+});
+
+// First install: a local page explains that the VS Code extension is needed too.
+chrome.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason === 'install') chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
 });
 
 chrome.storage.onChanged.addListener((changes) => {

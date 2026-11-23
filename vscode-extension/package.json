@@ -3,7 +3,7 @@
   "displayName": "Power Apps X VS Code",
   "description": "Live two-way sync between the Power Apps Studio formula bar (browser) and VS Code. Unofficial, not affiliated with Microsoft.",
   "publisher": "WavyPanda",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "license": "MIT",
   "icon": "media/icon.png",
   "galleryBanner": {

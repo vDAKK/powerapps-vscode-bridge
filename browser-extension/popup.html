@@ -161,6 +161,7 @@
       button.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
       button.primary:hover { background: var(--brand-hover); border-color: var(--brand-hover); }
       button[hidden] { display: none; }
+      .next .inline { flex-wrap: wrap; }
 
       /* Settings */
       details { border-top: 1px solid var(--border); margin-top: 8px; }
@@ -255,6 +256,7 @@
       <section class="next">
         <p id="hint"></p>
         <div class="inline">
+          <button class="primary" id="installVs" hidden>Installer l’extension VS Code</button>
           <button class="primary" id="openStudio" hidden>Ouvrir Power Apps</button>
           <button class="primary" id="reconnectMain" hidden>Reconnecter</button>
         </div>
