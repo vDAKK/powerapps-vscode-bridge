@@ -259,13 +259,13 @@ let exporting = null;
 let appErrorList = [];
 const appErrorUris = new Set();
 
-function exportApp({ quiet = false } = {}) {
+function exportApp({ quiet = false, timeoutMs = 180000 } = {}) {
   if (exporting) return exporting;
   exporting = (async () => {
     // Studio commits a confirmed edit about a second later: don't read the app before it has.
     const wait = lastConfirmedAt + 2000 - Date.now();
     if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-    const res = await request('exportApp', {}, 180000);
+    const res = await request('exportApp', {}, timeoutMs);
     const root = mirrorRoot();
     const seen = new Set();
     let formulas = 0;
@@ -320,6 +320,19 @@ function exportApp({ quiet = false } = {}) {
 async function refreshAppErrors({ quiet = false } = {}) {
   try {
     appErrorList = (await request('appErrors', {}, 60000)) || [];
+/** Export at connection time: Studio may still be loading, so retry a few times before giving up. */
+let exportRetryTimer = null;
+function exportWhenReady(attempt = 0) {
+  clearTimeout(exportRetryTimer);
+  exportRetryTimer = setTimeout(() => {
+    if (lastExport || !openClients().length) return;
+    // No frame answers until Studio has rendered its tree view: a short timeout, then try again.
+    exportApp({ quiet: true, timeoutMs: 15000 }).catch(() => {
+      if (attempt < 8) exportWhenReady(attempt + 1); // ~2 min in all
+    });
+  }, attempt ? 3000 : 1500);
+}
+
   } catch (e) {
     if (!quiet) vscode.window.showWarningMessage(`Power Apps : ${e.message}`);
     return appErrorList;
@@ -779,6 +792,8 @@ function remember(msg) {
 
 async function onSelection(msg) {
   const uri = remember(msg);
+      // The export reads Studio's document, not the tree view: start it now rather than after the tree load.
+      if (!lastExport && config().get('exportOnConnect', true)) exportWhenReady();
   const controlChanged = !current || current.control !== msg.control;
   current = { control: msg.control, property: msg.property, uri };
   updateStatus();
@@ -1464,7 +1479,18 @@ async function loadFullTree({ quiet = false } = {}) {
       { location: { viewId: 'powerappsBridge.tree' }, title: 'Chargement de toute l’arborescence…' },
       async () => {
         lastCrawlAttempt = Date.now();
-        const all = await request('crawlTree', {}, 180000);
+        // Studio's own data gives the whole tree at once, but only once Studio has rendered its tree view:
+        // wait for it (up to ~15 s) before falling back to the slow crawl of the tree view.
+        let all = null;
+        for (let i = 0; i < 10 && openClients().length; i++) {
+          const visible = await request('listControls', {}, 10000).catch(() => []);
+          if (visible.length && visible[0].source === 'model') {
+            all = visible;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+        if (!all) all = await request('crawlTree', {}, 60000);
         if (all && all.length) {
           treeControls = all;
           treeComplete = true;

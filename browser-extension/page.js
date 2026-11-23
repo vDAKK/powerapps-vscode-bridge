@@ -608,7 +608,9 @@
     };
     if (scroller) scroller.scrollTop = 0;
     await sleep(120);
-    for (let step = 0; step < 500; step++) {
+    // Time budget: VS Code stops waiting after 60 s, and the crawl holds the queue of Studio actions.
+    const deadline = Date.now() + 45000;
+    for (let step = 0; step < 500 && Date.now() < deadline; step++) {
       await expandVisible(opened);
       merge(listControls());
       const s = treeScroller();
@@ -1275,7 +1277,10 @@
     const doc = studioDocument();
     const all = await doc.getControlsAsync();
     const top = (safe(modelTree) || []).filter((c) => c.level === 1).map((c) => c.name);
-    const names = top.length ? top : ['App'];
+    // Without the screen list the export would hold App alone, and VS Code would take it as the whole app
+    // (deleting every other formula file): refuse until Studio has rendered its tree.
+    if (!top.length) throw new Error('Studio is not ready yet (tree view not loaded)');
+    const names = top;
     const out = [];
     for (const name of names) {
       const ctrl = all.find((e) => entityDisplayName(e) === name);
