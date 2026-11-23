@@ -149,7 +149,7 @@ function updateStatus() {
   if (connected !== wasConnected) {
     wasConnected = connected;
     vscode.window.setStatusBarMessage(
-      connected ? '$(pass) Power Apps Studio connecté' : '$(debug-disconnect) Power Apps Studio déconnecté',
+      connected ? '$(pass) ' + vscode.l10n.t('Power Apps Studio connected') : '$(debug-disconnect) ' + vscode.l10n.t('Power Apps Studio disconnected'),
       4000
     );
     screenPreview.schedule(300);
@@ -158,31 +158,31 @@ function updateStatus() {
   tip.isTrusted = true;
   if (!server) {
     statusItem.text = '$(circle-slash) Power Apps';
-    tip.appendMarkdown('**Power Apps X VS Code** : serveur arrêté.\n\n[Redémarrer](command:powerappsBridge.restart)');
+    tip.appendMarkdown(vscode.l10n.t('**Power Apps X VS Code**: server stopped.') + `\n\n[${vscode.l10n.t('Restart')}](command:powerappsBridge.restart)`);
   } else if (!connected) {
     statusItem.text = '$(debug-disconnect) Power Apps';
     tip.appendMarkdown(
-      '**Power Apps X VS Code** : en attente de Power Apps Studio.\n\n' +
-        'Ouvre ton app dans Studio avec l’extension navigateur active.\n\n' +
-        '[Guide de démarrage](command:powerappsBridge.openWalkthrough) · [Journal](command:powerappsBridge.showLog)'
+      vscode.l10n.t('**Power Apps X VS Code**: waiting for Power Apps Studio.') + '\n\n' +
+        vscode.l10n.t('Open your app in Studio with the browser extension turned on.') + '\n\n' +
+        `[${vscode.l10n.t('Getting started')}](command:powerappsBridge.openWalkthrough) · [${vscode.l10n.t('Log')}](command:powerappsBridge.showLog)`
     );
   } else {
     statusItem.text = current ? `$(symbol-class) ${current.control}` : '$(pass-filled) Power Apps';
     tip.appendMarkdown(
-      '**Power Apps X VS Code** : connecté.\n\n' +
-        (current ? `Sélection : \`${current.control}.${current.property}\`\n\n` : '') +
-        '[Aperçu de l’écran](command:powerappsBridge.showPreview) · [Aller à une formule](command:powerappsBridge.goToFormula) (Ctrl+Alt+G)'
+      vscode.l10n.t('**Power Apps X VS Code**: connected.') + '\n\n' +
+        (current ? vscode.l10n.t('Selection: {0}', `\`${current.control}.${current.property}\``) + '\n\n' : '') +
+        `[${vscode.l10n.t('Screen preview')}](command:powerappsBridge.showPreview) · [${vscode.l10n.t('Go to a formula')}](command:powerappsBridge.goToFormula) (Ctrl+Alt+G)`
     );
   }
   if (!config().get('followSelection', true)) {
     statusItem.text += ' $(eye-closed)';
-    tip.appendMarkdown('\n\n$(eye-closed) Suivi de la sélection désactivé · [Réactiver](command:powerappsBridge.toggleFollow)');
+    tip.appendMarkdown(`\n\n$(eye-closed) ${vscode.l10n.t('Following the selection is off')} · [${vscode.l10n.t('Turn back on')}](command:powerappsBridge.toggleFollow)`);
   }
   statusItem.tooltip = tip;
   statusItem.command = current && connected ? 'powerappsBridge.goToControl' : 'powerappsBridge.help';
   if (current && connected && server) {
     propertyItem.text = `$(symbol-property) ${current.property} $(chevron-down)`;
-    propertyItem.tooltip = 'Changer de propriété (Ctrl+Alt+P)';
+    propertyItem.tooltip = vscode.l10n.t('Change property (Ctrl+Alt+P)');
     propertyItem.show();
   } else {
     propertyItem.hide();
@@ -311,7 +311,7 @@ function exportApp({ quiet = false, timeoutMs = 180000 } = {}) {
   })()
     .catch((e) => {
       log(`Export failed: ${e.message}`);
-      if (!quiet) vscode.window.showWarningMessage(`Power Apps : export impossible (${e.message})`);
+      if (!quiet) vscode.window.showWarningMessage(vscode.l10n.t('Power Apps: export failed ({0})', e.message));
       throw e;
     })
     .finally(() => {
@@ -338,7 +338,7 @@ async function refreshAppErrors({ quiet = false } = {}) {
   try {
     appErrorList = (await request('appErrors', {}, 60000)) || [];
   } catch (e) {
-    if (!quiet) vscode.window.showWarningMessage(`Power Apps : ${e.message}`);
+    if (!quiet) vscode.window.showWarningMessage(vscode.l10n.t('Power Apps: {0}', e.message));
     return appErrorList;
   }
   const byUri = new Map();
@@ -355,7 +355,7 @@ async function refreshAppErrors({ quiet = false } = {}) {
       return new vscode.Position(lines.length - 1, lines[lines.length - 1].length);
     };
     const sev = /warn/i.test(String(e.severity)) || e.severity === 1 ? vscode.DiagnosticSeverity.Warning : vscode.DiagnosticSeverity.Error;
-    const d = new vscode.Diagnostic(new vscode.Range(pos(start), pos(Math.max(end, start + 1))), e.message || 'Power Fx error', sev);
+    const d = new vscode.Diagnostic(new vscode.Range(pos(start), pos(Math.max(end, start + 1))), e.message || vscode.l10n.t('Power Fx error'), sev);
     d.source = 'Power Apps';
     if (!byUri.has(uri.toString())) byUri.set(uri.toString(), { uri, list: [] });
     byUri.get(uri.toString()).list.push(d);
@@ -392,7 +392,7 @@ function appSnapshot() {
     controls.push({
       name,
       type: (node && node.type) || (type && type.key) || undefined,
-      kind: type ? type.label : undefined,
+      kind: type ? type.key : undefined, // stable for tools: not the localized label
       template: controlTemplates.get(name),
       screen: node ? (p[0] || (node.level === 1 ? name : undefined)) : undefined,
       parent: p.length ? p[p.length - 1] : undefined,
@@ -648,14 +648,17 @@ function approveOrigin(origin) {
   if (asking.has(origin)) return asking.get(origin);
   const p = (async () => {
     const id = origin.replace(/^[a-z-]+:\/\//, '').replace(/\/$/, '');
+    const allow = vscode.l10n.t('Allow');
     const pick = await vscode.window.showWarningMessage(
-      `Power Apps X VS Code : une extension navigateur demande à se connecter (${id}). ` +
-        'Elle pourra lire et modifier les formules de l’app ouverte dans Studio. Autoriser seulement si c’est l’extension « Power Apps X VS Code ».',
+      vscode.l10n.t(
+        'Power Apps X VS Code: a browser extension is asking to connect ({0}). It will be able to read and change the formulas of the app open in Studio. Allow only if it is the "Power Apps X VS Code" extension.',
+        id
+      ),
       { modal: false },
-      'Autoriser',
-      'Refuser'
+      allow,
+      vscode.l10n.t('Deny')
     );
-    const ok = pick === 'Autoriser';
+    const ok = pick === allow;
     if (ok) await extContext.globalState.update(TRUSTED_KEY, [...trustedOrigins(), origin]);
     else refusedOrigins.add(origin);
     log(`${ok ? 'Approved' : 'Refused'} browser extension ${origin}`);
@@ -697,17 +700,20 @@ function startServer() {
     server = null;
     updateStatus();
     const inUse = err.code === 'EADDRINUSE';
+    const retry = vscode.l10n.t('Retry');
+    const changePort = vscode.l10n.t('Change port');
+    const showLog = vscode.l10n.t('Log');
     const pick = await vscode.window.showErrorMessage(
       inUse
-        ? `Power Apps X VS Code : le port ${port} est déjà utilisé, probablement par une autre fenêtre VS Code. Studio reste relié à cette autre fenêtre.`
-        : `Power Apps X VS Code : impossible d’écouter sur le port ${port} (${err.message}).`,
-      'Réessayer',
-      'Changer de port',
-      'Journal'
+        ? vscode.l10n.t('Power Apps X VS Code: port {0} is already in use, probably by another VS Code window. Studio stays linked to that other window.', port)
+        : vscode.l10n.t('Power Apps X VS Code: cannot listen on port {0} ({1}).', port, err.message),
+      retry,
+      changePort,
+      showLog
     );
-    if (pick === 'Réessayer') startServer();
-    else if (pick === 'Changer de port') vscode.commands.executeCommand('workbench.action.openSettings', 'powerappsBridge.port');
-    else if (pick === 'Journal') output.show(true);
+    if (pick === retry) startServer();
+    else if (pick === changePort) vscode.commands.executeCommand('workbench.action.openSettings', 'powerappsBridge.port');
+    else if (pick === showLog) output.show(true);
   });
   server.on('connection', async (ws, req) => {
     const origin = req.headers.origin;
@@ -784,8 +790,11 @@ async function handleMessage(ws, msg) {
         if (msg.version && msg.version !== own && !warnedVersions.has(msg.version)) {
           warnedVersions.add(msg.version);
           vscode.window.showWarningMessage(
-            `Power Apps : l'extension navigateur est en v${msg.version}, VS Code en v${own}. ` +
-              'Recharge l’extension navigateur (page Extensions du navigateur) puis la page Studio.'
+            vscode.l10n.t(
+              'Power Apps: the browser extension is v{0}, VS Code is v{1}. Reload the browser extension (Extensions page of the browser), then the Studio page.',
+              msg.version,
+              own
+            )
           );
         }
       }
@@ -828,7 +837,7 @@ async function handleMessage(ws, msg) {
       }
       if (!msg.ok) {
         log(`Studio refused the edit: ${msg.error}`);
-        vscode.window.setStatusBarMessage(`$(warning) Power Apps : ${msg.error}`, 6000);
+        vscode.window.setStatusBarMessage('$(warning) ' + vscode.l10n.t('Power Apps: {0}', msg.error), 6000);
       }
       break;
     case 'diagnostics':
@@ -987,7 +996,7 @@ function pushFormula(uri, m, text) {
   if (!target) {
     // Kept and sent as soon as Studio reconnects (the latest text per formula wins).
     unsentEdits.set(uri.toString(), { uri, m, text });
-    vscode.window.setStatusBarMessage('$(clock) Power Apps : navigateur déconnecté, modification envoyée à la reconnexion', 5000);
+    vscode.window.setStatusBarMessage('$(clock) ' + vscode.l10n.t('Power Apps: browser disconnected, the edit will be sent on reconnection'), 5000);
     if (diskResults.has(mkey)) {
       diskResults.set(mkey, { ok: null, pending: true, queued: true, at: new Date().toISOString() });
       scheduleMirrorState();
@@ -1046,7 +1055,7 @@ function onDiagnostics(msg) {
     const [sl, sc, el, ec] = d.range;
     const diag = new vscode.Diagnostic(
       new vscode.Range(sl - 1, sc - 1, el - 1, ec - 1),
-      d.message || summary || 'Power Fx error',
+      d.message || summary || vscode.l10n.t('Power Fx error'),
       SEVERITY[d.severity] ?? vscode.DiagnosticSeverity.Error
     );
     diag.source = 'Power Apps';
@@ -1088,7 +1097,7 @@ function onDiagnostics(msg) {
 /** Error count on the Power Apps icon of the activity bar. */
 function updateErrorBadge() {
   const n = errorFormulaCount();
-  outline.setBadge(n ? { value: n, tooltip: `${n} formule${n > 1 ? 's' : ''} en erreur` } : undefined);
+  outline.setBadge(n ? { value: n, tooltip: n > 1 ? vscode.l10n.t('{0} formulas with errors', n) : vscode.l10n.t('{0} formula with errors', n) } : undefined);
 }
 
 function errorFormulaCount() {
@@ -1107,13 +1116,13 @@ async function goTo(control, property) {
     const r = await request('navigate', { control, property, path: pathOf(control) }, 60000);
     if (!config().get('followSelection', true) && r) await openFormula(r.control, r.property);
   } catch (e) {
-    vscode.window.showWarningMessage(`Power Apps : ${e.message}`);
+    vscode.window.showWarningMessage(vscode.l10n.t('Power Apps: {0}', e.message));
     if (/not found/i.test(e.message) && treeComplete) loadFullTree({ quiet: true }); // renamed/deleted in Studio
   }
 }
 
 async function cmdGoToProperty() {
-  if (!current) return vscode.window.showWarningMessage('Power Apps : aucun contrôle sélectionné dans Studio pour l’instant.');
+  if (!current) return vscode.window.showWarningMessage(vscode.l10n.t('Power Apps: no control selected in Studio yet.'));
   const control = current.control;
   let props;
   try {
@@ -1122,7 +1131,7 @@ async function cmdGoToProperty() {
     propsView.refreshView();
   } catch (e) {
     props = propertiesByControl.get(control);
-    if (!props) return vscode.window.showWarningMessage(`Power Apps : ${e.message}`);
+    if (!props) return vscode.window.showWarningMessage(vscode.l10n.t('Power Apps: {0}', e.message));
   }
   const pick = await pickPropertyOf(control, props);
   if (pick) await goTo(control, pick);
@@ -1146,28 +1155,28 @@ function knownControls() {
  * control's name prefix (lbl, btn, gal… conventions).
  */
 const CONTROL_TYPES = [
-  { key: 'app', label: 'Application', icon: 'rocket', hint: /\bapp\b|appicon/i, name: /^app$/i },
-  { key: 'screen', label: 'Écran', icon: 'window', hint: /screen|écran/i, name: /screen$|^scr/i },
-  { key: 'component', label: 'Composant', icon: 'extensions', hint: /component|composant/i, name: /^(cmp|comp)/i },
-  { key: 'gallery', label: 'Galerie', icon: 'list-unordered', hint: /gallery|galerie/i, name: /^(gal|gallery)/i },
-  { key: 'form', label: 'Formulaire', icon: 'checklist', hint: /form|formulaire/i, name: /^(frm|form|edit|disp)/i },
-  { key: 'datacard', label: 'Carte de données', icon: 'symbol-field', hint: /datacard|carte/i, name: /datacard(?!value)|^dc/i },
-  { key: 'container', label: 'Conteneur', icon: 'layout', hint: /container|conteneur|group|groupe/i, name: /^(con|cnt|container|grp|group|hc|vc|hzc|vtc|lyt)/i },
-  { key: 'button', label: 'Bouton', icon: 'debug-start', hint: /button|bouton/i, name: /^(btn|button|but)/i },
-  { key: 'label', label: 'Étiquette', icon: 'symbol-text', hint: /label|étiquette|text ?label/i, name: /^(lbl|label|txtlbl)/i },
-  { key: 'input', label: 'Saisie de texte', icon: 'symbol-string', hint: /text ?input|textbox|saisie/i, name: /^(txt|textinput|inp|input|tb)|datacardvalue/i },
-  { key: 'dropdown', label: 'Liste déroulante', icon: 'chevron-down', hint: /dropdown|combo|liste/i, name: /^(cmb|combo|dd|drp|dropdown|lst|list|cb)/i },
-  { key: 'check', label: 'Choix', icon: 'pass', hint: /checkbox|toggle|radio|case|bascule/i, name: /^(chk|check|tgl|toggle|rad|radio)/i },
-  { key: 'date', label: 'Date', icon: 'calendar', hint: /date/i, name: /^(dte|date|dp|dtp)/i },
-  { key: 'icon', label: 'Icône', icon: 'star-empty', hint: /\bicon\b|icône/i, name: /^(ico|icon)/i },
-  { key: 'image', label: 'Image', icon: 'file-media', hint: /image|picture/i, name: /^(img|image|pic)/i },
-  { key: 'shape', label: 'Forme', icon: 'primitive-square', hint: /rectangle|shape|forme|separator/i, name: /^(rect|shp|shape|sep)/i },
-  { key: 'html', label: 'Texte HTML', icon: 'code', hint: /html/i, name: /^(htm|html)/i },
-  { key: 'timer', label: 'Minuteur', icon: 'clock', hint: /timer|minuteur/i, name: /^(tmr|timer)/i },
-  { key: 'chart', label: 'Graphique', icon: 'graph', hint: /chart|graphique/i, name: /^(chr|chart|grph)/i },
-  { key: 'media', label: 'Média', icon: 'play-circle', hint: /video|audio|camera|media/i, name: /^(vid|aud|cam|med)/i },
-  { key: 'pen', label: 'Stylet', icon: 'edit', hint: /pen|stylet/i, name: /^(pen)/i },
-  { key: 'slider', label: 'Curseur', icon: 'settings', hint: /slider|curseur|rating/i, name: /^(sld|slider|rtg|rating)/i },
+  { key: 'app', label: vscode.l10n.t('Application'), icon: 'rocket', hint: /\bapp\b|appicon/i, name: /^app$/i },
+  { key: 'screen', label: vscode.l10n.t('Screen'), icon: 'window', hint: /screen|écran/i, name: /screen$|^scr/i },
+  { key: 'component', label: vscode.l10n.t('Component'), icon: 'extensions', hint: /component|composant/i, name: /^(cmp|comp)/i },
+  { key: 'gallery', label: vscode.l10n.t('Gallery'), icon: 'list-unordered', hint: /gallery|galerie/i, name: /^(gal|gallery)/i },
+  { key: 'form', label: vscode.l10n.t('Form'), icon: 'checklist', hint: /form|formulaire/i, name: /^(frm|form|edit|disp)/i },
+  { key: 'datacard', label: vscode.l10n.t('Data card'), icon: 'symbol-field', hint: /datacard|carte/i, name: /datacard(?!value)|^dc/i },
+  { key: 'container', label: vscode.l10n.t('Container'), icon: 'layout', hint: /container|conteneur|group|groupe/i, name: /^(con|cnt|container|grp|group|hc|vc|hzc|vtc|lyt)/i },
+  { key: 'button', label: vscode.l10n.t('Button'), icon: 'debug-start', hint: /button|bouton/i, name: /^(btn|button|but)/i },
+  { key: 'label', label: vscode.l10n.t('Label'), icon: 'symbol-text', hint: /label|étiquette|text ?label/i, name: /^(lbl|label|txtlbl)/i },
+  { key: 'input', label: vscode.l10n.t('Text input'), icon: 'symbol-string', hint: /text ?input|textbox|saisie/i, name: /^(txt|textinput|inp|input|tb)|datacardvalue/i },
+  { key: 'dropdown', label: vscode.l10n.t('Drop-down list'), icon: 'chevron-down', hint: /dropdown|combo|liste/i, name: /^(cmb|combo|dd|drp|dropdown|lst|list|cb)/i },
+  { key: 'check', label: vscode.l10n.t('Choice'), icon: 'pass', hint: /checkbox|toggle|radio|case|bascule/i, name: /^(chk|check|tgl|toggle|rad|radio)/i },
+  { key: 'date', label: vscode.l10n.t('Date'), icon: 'calendar', hint: /date/i, name: /^(dte|date|dp|dtp)/i },
+  { key: 'icon', label: vscode.l10n.t('Icon'), icon: 'star-empty', hint: /\bicon\b|icône/i, name: /^(ico|icon)/i },
+  { key: 'image', label: vscode.l10n.t('Image'), icon: 'file-media', hint: /image|picture/i, name: /^(img|image|pic)/i },
+  { key: 'shape', label: vscode.l10n.t('Shape'), icon: 'primitive-square', hint: /rectangle|shape|forme|separator/i, name: /^(rect|shp|shape|sep)/i },
+  { key: 'html', label: vscode.l10n.t('HTML text'), icon: 'code', hint: /html/i, name: /^(htm|html)/i },
+  { key: 'timer', label: vscode.l10n.t('Timer'), icon: 'clock', hint: /timer|minuteur/i, name: /^(tmr|timer)/i },
+  { key: 'chart', label: vscode.l10n.t('Chart'), icon: 'graph', hint: /chart|graphique/i, name: /^(chr|chart|grph)/i },
+  { key: 'media', label: vscode.l10n.t('Media'), icon: 'play-circle', hint: /video|audio|camera|media/i, name: /^(vid|aud|cam|med)/i },
+  { key: 'pen', label: vscode.l10n.t('Pen'), icon: 'edit', hint: /pen|stylet/i, name: /^(pen)/i },
+  { key: 'slider', label: vscode.l10n.t('Slider'), icon: 'settings', hint: /slider|curseur|rating/i, name: /^(sld|slider|rtg|rating)/i },
 ];
 
 /** Studio template names (from its tree data) -> CONTROL_TYPES key. Classic, modern and "Canvas" (Fluent) controls. */
@@ -1204,14 +1213,14 @@ function controlType(node) {
     if (hit) return CONTROL_TYPES.find((t) => t.key === hit[1]);
     for (const t of CONTROL_TYPES) if (t.hint.test(node.type)) return t;
     return node.children && node.children.length
-      ? { key: 'group', label: 'Groupe', icon: 'layout' }
+      ? { key: 'group', label: vscode.l10n.t('Group'), icon: 'layout' }
       : { key: 'other', label: node.type, icon: 'symbol-misc' };
   }
   if (node.hint) for (const t of CONTROL_TYPES) if (t.hint.test(node.hint)) return t;
   for (const t of CONTROL_TYPES) if (t.name.test(node.name)) return t;
   return node.children && node.children.length
-    ? { key: 'group', label: 'Groupe', icon: 'layout' }
-    : { key: 'other', label: 'Contrôle', icon: 'symbol-misc' };
+    ? { key: 'group', label: vscode.l10n.t('Group'), icon: 'layout' }
+    : { key: 'other', label: vscode.l10n.t('Control'), icon: 'symbol-misc' };
 }
 
 /** [screen, …, parent] names of a tree node. */
@@ -1281,7 +1290,7 @@ class AppTreeProvider {
       .filter((n) => !this.byName.has(n))
       .sort((a, b) => a.localeCompare(b));
     if (others.length) {
-      const group = { kind: 'group', name: 'Autres contrôles ouverts', parent: null, children: [] };
+      const group = { kind: 'group', name: vscode.l10n.t('Other open controls'), parent: null, children: [] };
       for (const n of others) {
         const node = { kind: 'control', name: n, level: 2, parent: group, children: [] };
         group.children.push(node);
@@ -1314,7 +1323,7 @@ class AppTreeProvider {
       const it = new vscode.TreeItem(node.name, vscode.TreeItemCollapsibleState.Collapsed);
       it.id = 'group:other';
       it.iconPath = new vscode.ThemeIcon('eye-closed');
-      it.tooltip = 'Contrôles ouverts pendant la session mais absents de l’arborescence chargée. Rafraîchis l’arborescence pour les ranger.';
+      it.tooltip = vscode.l10n.t('Controls opened during the session but missing from the loaded tree. Refresh the tree to put them in place.');
       return it;
     }
     const type = controlType(node);
@@ -1338,8 +1347,8 @@ class AppTreeProvider {
     // Kept short: the icon already says the type and the error state, the description adds what it can't.
     const n = node.children.length ? countDescendants(node) : 0;
     parts.push(n ? `${type.label} · ${n}` : type.label);
-    if (errors.length) parts.push(`${errors.length} erreur${errors.length > 1 ? 's' : ''}`);
-    if (fxTools && node.level > 1 && fxTools.isDefaultName(node.name)) parts.push('nom par défaut');
+    if (errors.length) parts.push(errors.length > 1 ? vscode.l10n.t('{0} errors', errors.length) : vscode.l10n.t('{0} error', errors.length));
+    if (fxTools && node.level > 1 && fxTools.isDefaultName(node.name)) parts.push(vscode.l10n.t('default name'));
     it.description = (isCurrent ? '● ' : '') + parts.join(' · ');
     const path = nodePath(node);
     const md = new vscode.MarkdownString(undefined, true);
@@ -1348,24 +1357,24 @@ class AppTreeProvider {
     md.appendMarkdown(`$(${type.icon}) **${node.name}** — ${type.label}\n\n`);
     if (path.length) md.appendMarkdown(`${path.join(' › ')} › **${node.name}**\n\n`);
     const loaded = [...meta.values()].filter((m) => m.control === node.name).map((m) => m.property);
-    if (loaded.length) md.appendMarkdown(`Formules ouvertes : ${loaded.sort().join(', ')}\n\n`);
-    if (errors.length) md.appendMarkdown(`⚠ Erreurs dans : ${errors.map((e) => e.property).join(', ')}\n\n`);
+    if (loaded.length) md.appendMarkdown(vscode.l10n.t('Open formulas: {0}', loaded.sort().join(', ')) + '\n\n');
+    if (errors.length) md.appendMarkdown(vscode.l10n.t('⚠ Errors in: {0}', errors.map((e) => e.property).join(', ')) + '\n\n');
     md.appendMarkdown(
-      `[Sélectionner](command:powerappsBridge.selectControl?${arg([node.name])}) · ` +
-        `[Propriété…](command:powerappsBridge.pickProperty?${arg([node.name])}) · ` +
-        `[Aperçu](command:powerappsBridge.revealInPreview?${arg([{ name: node.name }])}) · ` +
-        `[Renommer](command:powerappsBridge.renameControl?${arg([{ name: node.name }])}) · ` +
-        `[Références](command:powerappsBridge.findUsages?${arg([node.name])})`
+      `[${vscode.l10n.t('Select')}](command:powerappsBridge.selectControl?${arg([node.name])}) · ` +
+        `[${vscode.l10n.t('Property…')}](command:powerappsBridge.pickProperty?${arg([node.name])}) · ` +
+        `[${vscode.l10n.t('Preview')}](command:powerappsBridge.revealInPreview?${arg([{ name: node.name }])}) · ` +
+        `[${vscode.l10n.t('Rename')}](command:powerappsBridge.renameControl?${arg([{ name: node.name }])}) · ` +
+        `[${vscode.l10n.t('References')}](command:powerappsBridge.findUsages?${arg([node.name])})`
     );
     if (fxTools) {
       const refs = fxTools.references(node.name);
-      if (refs) md.appendMarkdown(`\n\nRéférencé dans ${refs} formule${refs > 1 ? 's' : ''}`);
+      if (refs) md.appendMarkdown('\n\n' + (refs > 1 ? vscode.l10n.t('Referenced in {0} formulas', refs) : vscode.l10n.t('Referenced in {0} formula', refs)));
       const sug = fxTools.isDefaultName(node.name) && fxTools.suggestName(node.name);
-      if (sug) md.appendMarkdown(`\n\nNom suggéré : \`${sug}\``);
+      if (sug) md.appendMarkdown('\n\n' + vscode.l10n.t('Suggested name: {0}', '`' + sug + '`'));
     }
     it.tooltip = md;
     it.contextValue = 'control';
-    it.command = { command: 'powerappsBridge.selectControl', title: 'Sélectionner', arguments: [node.name] };
+    it.command = { command: 'powerappsBridge.selectControl', title: vscode.l10n.t('Select'), arguments: [node.name] };
     return it;
   }
 }
@@ -1377,14 +1386,14 @@ class AppTreeProvider {
 const PROPERTY_GROUPS = [
   {
     key: 'behavior',
-    label: 'Comportement',
+    label: vscode.l10n.t('Behavior'),
     icon: 'zap',
     expanded: true,
     test: (p) => /^On[A-Z]/.test(p) && !/^On(Text)$/.test(p),
   },
   {
     key: 'data',
-    label: 'Données et contenu',
+    label: vscode.l10n.t('Data and content'),
     icon: 'database',
     expanded: true,
     test: (p) =>
@@ -1392,25 +1401,25 @@ const PROPERTY_GROUPS = [
   },
   {
     key: 'layout',
-    label: 'Position et taille',
+    label: vscode.l10n.t('Position and size'),
     icon: 'move',
     test: (p) =>
       /^(X|Y|Width|Height|AutoHeight|ZIndex|FillPortions|AlignInContainer|Gap|TemplateSize|TemplatePadding|WrapCount)$|^(Layout|Flexible|Minimum|Maximum)/.test(p),
   },
   {
     key: 'state',
-    label: 'Visibilité et accessibilité',
+    label: vscode.l10n.t('Visibility and accessibility'),
     icon: 'eye',
     test: (p) => /^(Visible|DisplayMode|Tooltip|AccessibleLabel|TabIndex|Live|Role|ContentLanguage|Accessible\w*)$/.test(p),
   },
   {
     key: 'appearance',
-    label: 'Apparence',
+    label: vscode.l10n.t('Appearance'),
     icon: 'symbol-color',
     test: (p) =>
       /Color|Fill|Border|Font|Size|Weight|Italic|Underline|Strikethrough|Align|Padding|Radius|Shadow|Image|Icon|Transparency|Template|Theme|Style|LineHeight|Wrap|Hover|Pressed|Disabled|Focused|Rotation|Spacing|Appearance|Variant|Shape|Overflow|Scrollbar|Transition|Spinner/.test(p),
   },
-  { key: 'other', label: 'Autres', icon: 'ellipsis', test: () => true },
+  { key: 'other', label: vscode.l10n.t('Other'), icon: 'ellipsis', test: () => true },
 ];
 
 function propertyGroup(name) {
@@ -1469,9 +1478,9 @@ class PropsProvider {
 
   getTreeItem(node) {
     if (node.kind === 'load') {
-      const it = new vscode.TreeItem('Charger toutes les propriétés depuis Studio…', vscode.TreeItemCollapsibleState.None);
+      const it = new vscode.TreeItem(vscode.l10n.t('Load all properties from Studio…'), vscode.TreeItemCollapsibleState.None);
       it.iconPath = new vscode.ThemeIcon('cloud-download');
-      it.command = { command: 'powerappsBridge.loadProperties', title: 'Charger' };
+      it.command = { command: 'powerappsBridge.loadProperties', title: vscode.l10n.t('Load') };
       return it;
     }
     if (node.kind === 'group') {
@@ -1486,7 +1495,7 @@ class PropsProvider {
       it.iconPath = errors
         ? new vscode.ThemeIcon('error', new vscode.ThemeColor('list.errorForeground'))
         : new vscode.ThemeIcon(g.icon, hasCurrent ? new vscode.ThemeColor('charts.blue') : undefined);
-      it.description = `${node.children.length}` + (errors ? ` · ${errors} en erreur` : '') + (hasCurrent ? ' · ●' : '');
+      it.description = `${node.children.length}` + (errors ? ' · ' + vscode.l10n.t('{0} with errors', errors) : '') + (hasCurrent ? ' · ●' : '');
       return it;
     }
     const it = new vscode.TreeItem(node.name, vscode.TreeItemCollapsibleState.None);
@@ -1505,10 +1514,10 @@ class PropsProvider {
     const md = new vscode.MarkdownString();
     md.appendMarkdown(`**${node.control}.${node.name}**\n\n`);
     if (formula !== undefined) md.appendCodeblock(formula, 'powerfx');
-    else md.appendMarkdown('_Formule pas encore chargée : clique pour l’ouvrir._');
+    else md.appendMarkdown(vscode.l10n.t('_Formula not loaded yet: click to open it._'));
     if (errors.length) md.appendMarkdown('\n\n' + errors.map((d) => `⚠ ${d.message}`).join('\n\n'));
     it.tooltip = md;
-    it.command = { command: 'powerappsBridge.openFormula', title: 'Ouvrir', arguments: [node.control, node.name] };
+    it.command = { command: 'powerappsBridge.openFormula', title: vscode.l10n.t('Open'), arguments: [node.control, node.name] };
     return it;
   }
 }
@@ -1636,13 +1645,13 @@ const breadcrumbLens = {
     const node = appTree.byName.get(m.control) || { name: m.control, level: 2, children: [] };
     const type = controlType(node);
     const out = nodePath(node).map((p, i) =>
-      lens(`${i ? '› ' : '$(window) '}${p}`, 'powerappsBridge.selectControl', [p], `Sélectionner ${p} dans Studio`)
+      lens(`${i ? '› ' : '$(window) '}${p}`, 'powerappsBridge.selectControl', [p], vscode.l10n.t('Select {0} in Studio', p))
     );
-    out.push(lens(`› $(${type.icon}) ${m.control}`, 'powerappsBridge.selectControl', [m.control], `${type.label} · sélectionner dans Studio`));
-    out.push(lens(`· ${m.property} $(chevron-down)`, 'powerappsBridge.pickProperty', [m.control], 'Changer de propriété (Ctrl+Alt+P)'));
-    out.push(lens('$(eye) Aperçu', 'powerappsBridge.revealInPreview', [{ name: m.control }], 'Montrer dans l’aperçu de l’écran'));
+    out.push(lens(`› $(${type.icon}) ${m.control}`, 'powerappsBridge.selectControl', [m.control], vscode.l10n.t('{0} · select in Studio', type.label)));
+    out.push(lens(`· ${m.property} $(chevron-down)`, 'powerappsBridge.pickProperty', [m.control], vscode.l10n.t('Change property (Ctrl+Alt+P)')));
+    out.push(lens('$(eye) ' + vscode.l10n.t('Preview'), 'powerappsBridge.revealInPreview', [{ name: m.control }], vscode.l10n.t('Show in the screen preview')));
     const refs = fxTools ? fxTools.references(m.control) : 0;
-    if (refs) out.push(lens(`$(references) ${refs} référence${refs > 1 ? 's' : ''}`, 'powerappsBridge.findUsages', [m.control], 'Formules qui utilisent ce contrôle'));
+    if (refs) out.push(lens('$(references) ' + (refs > 1 ? vscode.l10n.t('{0} references', refs) : vscode.l10n.t('{0} reference', refs)), 'powerappsBridge.findUsages', [m.control], vscode.l10n.t('Formulas that use this control')));
     return out;
   },
 };
@@ -1687,7 +1696,7 @@ async function loadFullTree({ quiet = false } = {}) {
   setTimeout(() => outline.post(), 0); // shows the loading state
   crawling = vscode.window
     .withProgress(
-      { location: { viewId: 'powerappsBridge.tree' }, title: 'Chargement de toute l’arborescence…' },
+      { location: { viewId: 'powerappsBridge.tree' }, title: vscode.l10n.t('Loading the whole tree…') },
       async () => {
         lastCrawlAttempt = Date.now();
         // Studio's own data gives the whole tree at once, but only once Studio has rendered its tree view:
@@ -1713,13 +1722,13 @@ async function loadFullTree({ quiet = false } = {}) {
         } else {
           log('Full tree load returned nothing (Studio tree view not open or not rendered yet)');
           if (quiet && emptyLoadRetries++ < 5) setTimeout(() => !treeComplete && openClients().length && loadFullTree({ quiet: true }), 3000);
-          if (!quiet) vscode.window.showWarningMessage('Power Apps : arborescence vide. Ouvre le panneau Arborescence dans Studio.');
+          if (!quiet) vscode.window.showWarningMessage(vscode.l10n.t('Power Apps: empty tree. Open the Tree view panel in Studio.'));
         }
       }
     )
     .catch((e) => {
       log(`Full tree load failed: ${e.message}`);
-      if (!quiet) vscode.window.showWarningMessage(`Power Apps : ${e.message}`);
+      if (!quiet) vscode.window.showWarningMessage(vscode.l10n.t('Power Apps: {0}', e.message));
     })
     .finally(() => {
       crawling = null;
@@ -1752,7 +1761,7 @@ async function refreshTree({ full = false, expand = false, quiet = false } = {})
       setTimeout(() => loadFullTree({ quiet: true }), 0);
     }
   } catch (e) {
-    if (!quiet) vscode.window.showWarningMessage(`Power Apps : ${e.message}`);
+    if (!quiet) vscode.window.showWarningMessage(vscode.l10n.t('Power Apps: {0}', e.message));
   }
   appTree.refreshView();
   revealCurrent();
@@ -1771,7 +1780,7 @@ async function loadProperties({ quiet = false } = {}) {
   try {
     propertiesByControl.set(current.control, await request('listProperties'));
   } catch (e) {
-    if (!quiet) vscode.window.showWarningMessage(`Power Apps : ${e.message}`);
+    if (!quiet) vscode.window.showWarningMessage(vscode.l10n.t('Power Apps: {0}', e.message));
   }
   propsView.refreshView();
   revealCurrentProperty();
@@ -1822,7 +1831,7 @@ async function cmdOpenFormula(control, property) {
 async function cmdGoToControl() {
   if (!treeComplete && openClients().length) await loadFullTree({ quiet: true });
   const names = [...new Set([...appTree.byName.keys(), ...knownControls()])];
-  if (!names.length) return vscode.window.showWarningMessage('Power Apps : aucun contrôle connu. Ouvre une app dans Studio.');
+  if (!names.length) return vscode.window.showWarningMessage(vscode.l10n.t('Power Apps: no known control. Open an app in Studio.'));
   const items = names.map((name) => {
     const node = appTree.byName.get(name) || { name, children: [] };
     const type = controlType(node);
@@ -1830,7 +1839,7 @@ async function cmdGoToControl() {
     return {
       label: `$(${errors ? 'error' : type.icon}) ${name}`,
       name,
-      description: [name === current?.control ? '● sélectionné' : '', type.label, errors ? `${errors} erreur(s)` : '']
+      description: [name === current?.control ? '● ' + vscode.l10n.t('selected') : '', type.label, errors ? (errors > 1 ? vscode.l10n.t('{0} errors', errors) : vscode.l10n.t('{0} error', errors)) : '']
         .filter(Boolean)
         .join(' · '),
       detail: nodePath(node).join(' › ') || undefined,
@@ -1839,7 +1848,7 @@ async function cmdGoToControl() {
   const order = new Map(names.map((n, i) => [n, treeNames().indexOf(n) >= 0 ? treeNames().indexOf(n) : 1e6 + i]));
   items.sort((a, b) => order.get(a.name) - order.get(b.name));
   const pick = await vscode.window.showQuickPick(items, {
-    placeHolder: 'Contrôle à sélectionner dans Studio (nom, type ou écran)',
+    placeHolder: vscode.l10n.t('Control to select in Studio (name, type or screen)'),
     matchOnDescription: true,
     matchOnDetail: true,
   });
@@ -1871,7 +1880,7 @@ async function pickPropertyOf(control, props) {
       items.push({
         label: `$(${errors ? 'error' : /^On[A-Z]/.test(p) ? 'zap' : 'symbol-property'}) ${p}`,
         property: p,
-        description: [isCurrent ? 'actuelle' : '', errors ? 'en erreur' : ''].filter(Boolean).join(' · ') || undefined,
+        description: [isCurrent ? vscode.l10n.t('current') : '', errors ? vscode.l10n.t('has errors') : ''].filter(Boolean).join(' · ') || undefined,
         detail: f !== undefined ? preview(f) : undefined,
         picked: isCurrent,
       });
@@ -1879,7 +1888,7 @@ async function pickPropertyOf(control, props) {
   }
   const qp = vscode.window.createQuickPick();
   qp.title = control;
-  qp.placeholder = 'Rechercher une propriété (nom ou formule)';
+  qp.placeholder = vscode.l10n.t('Search for a property (name or formula)');
   qp.matchOnDetail = true;
   qp.items = items;
   const cur = items.find((i) => i.picked);
@@ -1904,26 +1913,28 @@ async function cmdRenameControl(node) {
   const taken = new Set([...appTree.byName.keys()].map((n) => n.toLowerCase()));
   const suggestion = fxTools && fxTools.suggestName(name);
   const newName = await vscode.window.showInputBox({
-    title: `Renommer ${name}`,
+    title: vscode.l10n.t('Rename {0}', name),
     value: suggestion || name,
     valueSelection: [0, (suggestion || name).length],
-    prompt: `Studio met à jour les formules qui y font référence.${suggestion ? ' (nom suggéré selon la convention de l’app)' : ''}`,
+    prompt: suggestion
+      ? vscode.l10n.t("Studio updates the formulas that refer to it. (suggested name, following the app's convention)")
+      : vscode.l10n.t('Studio updates the formulas that refer to it.'),
     validateInput: (v) => {
       v = v.trim();
-      if (!v) return 'Nom requis';
-      if (/[.'"!\[\]]/.test(v)) return 'Caractères interdits : . \' " ! [ ]';
-      if (v.toLowerCase() !== name.toLowerCase() && taken.has(v.toLowerCase())) return 'Ce nom est déjà utilisé';
+      if (!v) return vscode.l10n.t('Name required');
+      if (/[.'"!\[\]]/.test(v)) return vscode.l10n.t('Forbidden characters: . \' " ! [ ]');
+      if (v.toLowerCase() !== name.toLowerCase() && taken.has(v.toLowerCase())) return vscode.l10n.t('This name is already in use');
       return null;
     },
   });
   if (!newName || newName.trim() === name) return;
   try {
-    await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Renommage de ${name}…` }, () =>
+    await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('Renaming {0}…', name) }, () =>
       renameControlInStudio(name, newName.trim())
     );
     vscode.window.setStatusBarMessage(`$(check) ${name} → ${newName.trim()}`, 4000);
   } catch (e) {
-    vscode.window.showWarningMessage(`Power Apps : ${e.message}`);
+    vscode.window.showWarningMessage(vscode.l10n.t('Power Apps: {0}', e.message));
   }
 }
 
@@ -1950,10 +1961,10 @@ async function cmdGoToFormula() {
     .map((m) => ({ label: `${m.control}.${m.property}`, control: m.control, property: m.property }))
     .sort((a, b) => a.label.localeCompare(b.label));
   const qp = vscode.window.createQuickPick();
-  qp.placeholder = 'Control.Property (e.g. Button1.OnSelect)';
+  qp.placeholder = vscode.l10n.t('Control.Property (e.g. Button1.OnSelect)');
   qp.items = items;
   qp.onDidChangeValue((v) => {
-    const extra = v.includes('.') && !items.some((i) => i.label === v) ? [{ label: v, description: 'go to', free: true }] : [];
+    const extra = v.includes('.') && !items.some((i) => i.label === v) ? [{ label: v, description: vscode.l10n.t('go to'), free: true }] : [];
     qp.items = [...extra, ...items];
   });
   const choice = await new Promise((resolve) => {
@@ -1990,26 +2001,26 @@ function screenNames() {
 async function cmdHelp() {
   const connected = openClients().length > 0;
   const items = [
-    { label: '$(book) Guide de démarrage', run: () => openWalkthrough() },
-    connected && { label: '$(device-desktop) Aperçu de l’écran', run: () => screenPreview.show() },
-    connected && { label: '$(go-to-file) Aller à une formule…', description: 'Ctrl+Alt+G', run: cmdGoToFormula },
+    { label: '$(book) ' + vscode.l10n.t('Getting started'), run: () => openWalkthrough() },
+    connected && { label: '$(device-desktop) ' + vscode.l10n.t('Screen preview'), run: () => screenPreview.show() },
+    connected && { label: '$(go-to-file) ' + vscode.l10n.t('Go to a formula…'), description: 'Ctrl+Alt+G', run: cmdGoToFormula },
     !connected && {
-      label: '$(link-external) Ouvrir Power Apps',
+      label: '$(link-external) ' + vscode.l10n.t('Open Power Apps'),
       description: 'make.powerapps.com',
       run: () => vscode.env.openExternal(vscode.Uri.parse('https://make.powerapps.com/')),
     },
     {
       label: config().get('followSelection', true)
-        ? '$(eye-closed) Ne plus suivre la sélection de Studio'
-        : '$(eye) Suivre la sélection de Studio',
+        ? '$(eye-closed) ' + vscode.l10n.t('Stop following the Studio selection')
+        : '$(eye) ' + vscode.l10n.t('Follow the Studio selection'),
       run: () => vscode.commands.executeCommand('powerappsBridge.toggleFollow'),
     },
-    { label: '$(debug-restart) Redémarrer le serveur', description: `port ${config().get('port', 8765)}`, run: startServer },
-    { label: '$(output) Afficher le journal', run: () => output.show(true) },
-    { label: '$(gear) Paramètres', run: () => vscode.commands.executeCommand('workbench.action.openSettings', 'powerappsBridge') },
+    { label: '$(debug-restart) ' + vscode.l10n.t('Restart the server'), description: vscode.l10n.t('port {0}', config().get('port', 8765)), run: startServer },
+    { label: '$(output) ' + vscode.l10n.t('Show the log'), run: () => output.show(true) },
+    { label: '$(gear) ' + vscode.l10n.t('Settings'), run: () => vscode.commands.executeCommand('workbench.action.openSettings', 'powerappsBridge') },
   ].filter(Boolean);
   const pick = await vscode.window.showQuickPick(items, {
-    placeHolder: connected ? 'Power Apps : connecté à Studio' : 'Power Apps : en attente de Studio (extension navigateur)',
+    placeHolder: connected ? vscode.l10n.t('Power Apps: connected to Studio') : vscode.l10n.t('Power Apps: waiting for Studio (browser extension)'),
   });
   if (pick) await pick.run();
 }
@@ -2044,13 +2055,13 @@ const documentLinkProvider = {
           new vscode.Range(doc.positionAt(m.index), doc.positionAt(end)),
           command('powerappsBridge.openFormula', [name, after[1]])
         );
-        link.tooltip = `Ouvrir ${name}.${after[1]}`;
+        link.tooltip = vscode.l10n.t('Open {0}', `${name}.${after[1]}`);
       } else {
         link = new vscode.DocumentLink(
           new vscode.Range(doc.positionAt(m.index), doc.positionAt(re.lastIndex)),
           command('powerappsBridge.selectControl', [name])
         );
-        link.tooltip = `Sélectionner ${name} dans Studio`;
+        link.tooltip = vscode.l10n.t('Select {0} in Studio', name);
       }
       links.push(link);
     }
@@ -2088,10 +2099,10 @@ function knownVariables() {
   const vars = new Map(); // name -> kind
   for (const f of fsProvider.files.values()) {
     const t = f.data.toString('utf8');
-    for (const m of t.matchAll(/\bSet\s*\(\s*([A-Za-z_]\w*)/g)) vars.set(m[1], 'Variable globale');
-    for (const m of t.matchAll(/\b(?:ClearCollect|Collect)\s*\(\s*([A-Za-z_]\w*)/g)) vars.set(m[1], 'Collection');
+    for (const m of t.matchAll(/\bSet\s*\(\s*([A-Za-z_]\w*)/g)) vars.set(m[1], vscode.l10n.t('Global variable'));
+    for (const m of t.matchAll(/\b(?:ClearCollect|Collect)\s*\(\s*([A-Za-z_]\w*)/g)) vars.set(m[1], vscode.l10n.t('Collection'));
     for (const m of t.matchAll(/\bUpdateContext\s*\(\s*\{([^}]*)\}/g)) {
-      for (const v of m[1].matchAll(/([A-Za-z_]\w*)\s*:/g)) vars.set(v[1], 'Variable de contexte');
+      for (const v of m[1].matchAll(/([A-Za-z_]\w*)\s*:/g)) vars.set(v[1], vscode.l10n.t('Context variable'));
     }
   }
   return vars;
@@ -2107,7 +2118,7 @@ function controlDoc(name) {
     if (p.length) md.appendMarkdown(`${p.join(' › ')} › ${name}\n\n`);
   }
   const props = propertiesOf(name);
-  if (props.length) md.appendMarkdown(`Propriétés : ${props.slice(0, 30).join(', ')}${props.length > 30 ? '…' : ''}`);
+  if (props.length) md.appendMarkdown(vscode.l10n.t('Properties: {0}', props.slice(0, 30).join(', ') + (props.length > 30 ? '…' : '')));
   return md;
 }
 
@@ -2120,7 +2131,7 @@ const completionProvider = {
       const declared = propertiesByControl.has(name);
       return propertiesOf(name).map((p) => {
         const it = new vscode.CompletionItem(p, FX.GLOBALS[name] ? vscode.CompletionItemKind.EnumMember : vscode.CompletionItemKind.Property);
-        if (!declared && appTree.byName.has(name)) it.detail = 'propriété usuelle du type';
+        if (!declared && appTree.byName.has(name)) it.detail = vscode.l10n.t('usual property of the type');
         return it;
       });
     }
@@ -2130,7 +2141,7 @@ const completionProvider = {
       it.command = { command: 'editor.action.triggerParameterHints', title: '' };
       if (FX.FUNCTIONS[f]) {
         it.detail = fxSignature(f);
-        it.documentation = FX.FUNCTIONS[f][1];
+        it.documentation = vscode.l10n.t(FX.FUNCTIONS[f][1]);
       }
       return it;
     });
@@ -2140,11 +2151,11 @@ const completionProvider = {
       const it = new vscode.CompletionItem(c, node && node.level === 1 ? vscode.CompletionItemKind.Module : vscode.CompletionItemKind.Variable);
       it.insertText = quoteName(c);
       it.filterText = c;
-      it.detail = node ? controlType(node).label + (nodePath(node)[0] ? ` · ${nodePath(node)[0]}` : '') : 'Contrôle';
+      it.detail = node ? controlType(node).label + (nodePath(node)[0] ? ` · ${nodePath(node)[0]}` : '') : vscode.l10n.t('Control');
       items.push(it);
     }
     for (const [v, kind] of knownVariables()) {
-      const it = new vscode.CompletionItem(v, kind === 'Collection' ? vscode.CompletionItemKind.Struct : vscode.CompletionItemKind.Variable);
+      const it = new vscode.CompletionItem(v, kind === vscode.l10n.t('Collection') ? vscode.CompletionItemKind.Struct : vscode.CompletionItemKind.Variable);
       it.detail = kind;
       items.push(it);
     }
@@ -2160,7 +2171,7 @@ const hoverProvider = {
     if (FX.FUNCTIONS[word]) {
       const md = new vscode.MarkdownString();
       md.appendCodeblock(fxSignature(word), 'powerfx');
-      md.appendMarkdown(FX.FUNCTIONS[word][1]);
+      md.appendMarkdown(vscode.l10n.t(FX.FUNCTIONS[word][1]));
       return new vscode.Hover(md, range);
     }
     if (appTree.byName.has(word) || knownControls().includes(word)) return new vscode.Hover(controlDoc(word), range);
@@ -2189,7 +2200,7 @@ const signatureProvider = {
       else if (ch === '(' && depth === 0) {
         const name = /([A-Za-z_]\w*)\s*$/.exec(text.slice(0, i));
         if (!name || !FX.FUNCTIONS[name[1]]) return;
-        const sig = new vscode.SignatureInformation(fxSignature(name[1]), FX.FUNCTIONS[name[1]][1]);
+        const sig = new vscode.SignatureInformation(fxSignature(name[1]), vscode.l10n.t(FX.FUNCTIONS[name[1]][1]));
         const params = FX.FUNCTIONS[name[1]][0].replace(/[[\]…]/g, '').split(',').map((s) => s.trim()).filter(Boolean);
         sig.parameters = [...new Set(params)].map((p) => new vscode.ParameterInformation(p));
         const help = new vscode.SignatureHelp();
@@ -2209,8 +2220,8 @@ function activate(context) {
   statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   propertyItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
   propertyItem.command = 'powerappsBridge.goToProperty';
-  statusItem.name = 'Power Apps : connexion et contrôle';
-  propertyItem.name = 'Power Apps : propriété';
+  statusItem.name = vscode.l10n.t('Power Apps: connection and control');
+  propertyItem.name = vscode.l10n.t('Power Apps: property');
   diagnostics = vscode.languages.createDiagnosticCollection('powerfx');
   statusItem.show();
 
@@ -2232,8 +2243,8 @@ function activate(context) {
     vscode.commands.registerCommand('powerappsBridge.refreshTree', () => refreshTree({ full: true })),
     vscode.commands.registerCommand('powerappsBridge.expandTree', () => refreshTree({ expand: true })),
     vscode.commands.registerCommand('powerappsBridge.exportApp', () =>
-      vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Power Apps : export de toute l’app…' }, () =>
-        exportApp().then((r) => vscode.window.setStatusBarMessage(`$(check) ${r.formulas} formules exportées`, 5000), () => {})
+      vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('Power Apps: exporting the whole app…') }, () =>
+        exportApp().then((r) => vscode.window.setStatusBarMessage('$(check) ' + vscode.l10n.t('{0} formulas exported', r.formulas), 5000), () => {})
       )
     ),
     vscode.commands.registerCommand('powerappsBridge.renameControl', cmdRenameControl),
@@ -2258,13 +2269,13 @@ function activate(context) {
     vscode.commands.registerCommand('powerappsBridge.forgetBrowsers', async () => {
       await context.globalState.update(TRUSTED_KEY, []);
       refusedOrigins.clear();
-      vscode.window.showInformationMessage('Power Apps X VS Code : les extensions navigateur autorisées ont été oubliées. La prochaine connexion redemandera l’autorisation.');
+      vscode.window.showInformationMessage(vscode.l10n.t('Power Apps X VS Code: the allowed browser extensions have been forgotten. The next connection will ask for permission again.'));
       startServer(); // drops current connections
     }),
     vscode.commands.registerCommand('powerappsBridge.toggleFollow', async () => {
       const next = !config().get('followSelection', true);
       await config().update('followSelection', next, vscode.ConfigurationTarget.Global);
-      vscode.window.setStatusBarMessage(`$(${next ? 'eye' : 'eye-closed'}) Power Apps : suivi de la sélection ${next ? 'activé' : 'désactivé'}`, 3000);
+      vscode.window.setStatusBarMessage(`$(${next ? 'eye' : 'eye-closed'}) ` + (next ? vscode.l10n.t('Power Apps: following the selection turned on') : vscode.l10n.t('Power Apps: following the selection turned off')), 3000);
       updateStatus();
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {

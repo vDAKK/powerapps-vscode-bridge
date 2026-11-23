@@ -6,6 +6,7 @@
 
 const vscode = require('vscode');
 const crypto = require('crypto');
+const { escapeHtml: esc, uiLanguage, l10nScript } = require('./ui-icons');
 
 const POLL_MS = 3000; // catch changes made in Studio (drag, resize, data refresh) while the panel is visible
 
@@ -40,7 +41,7 @@ class ScreenPreview {
     } else {
       this.panel = vscode.window.createWebviewPanel(
         'powerappsBridge.preview',
-        'Aperçu Power Apps',
+        vscode.l10n.t('Power Apps Preview'),
         { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
         { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [] }
       );
@@ -134,7 +135,10 @@ class ScreenPreview {
       focus: this.focusName,
     });
     this.focusName = null;
-    this.panel.title = this.mirror && this.mirror.screen ? `Aperçu · ${this.mirror.screen}` : 'Aperçu Power Apps';
+    this.panel.title =
+      this.mirror && this.mirror.screen
+        ? vscode.l10n.t('Preview · {0}', this.mirror.screen)
+        : vscode.l10n.t('Power Apps Preview');
   }
 
   page() {
@@ -147,8 +151,46 @@ class ScreenPreview {
       "style-src 'unsafe-inline'",
       `script-src 'nonce-${nonce}'`,
     ].join('; ');
+    const lang = uiLanguage(vscode);
+    const T = {
+      preview: vscode.l10n.t('Preview'),
+      screenShown: vscode.l10n.t('Screen shown in Studio'),
+      screen: vscode.l10n.t('Screen'),
+      search: vscode.l10n.t('Search for a control'),
+      selectFirst: vscode.l10n.t('Select the first result'),
+      enter: vscode.l10n.t('Enter'),
+      showNames: vscode.l10n.t('Show the name and outline of all controls'),
+      refresh: vscode.l10n.t('Refresh from Studio'),
+      notConnected: vscode.l10n.t('Studio not connected'),
+      notConnectedText: vscode.l10n.t(
+        'Open your app in Power Apps Studio with the browser extension enabled: the screen will show up here.'
+      ),
+      gettingStarted: vscode.l10n.t('Getting started'),
+      unavailable: vscode.l10n.t('Preview unavailable'),
+      noAnswer: vscode.l10n.t(
+        'Studio did not respond ({0}). Reload the browser extension and the Studio tab, then try again.'
+      ),
+      retry: vscode.l10n.t('Retry'),
+      loading: vscode.l10n.t('Loading the screen…'),
+      noScreen: vscode.l10n.t('Screen not found'),
+      noScreenControls: vscode.l10n.t(
+        "Controls are visible but no screen was recognized. Select a screen in Studio's tree view."
+      ),
+      noCanvas: vscode.l10n.t(
+        "Studio's canvas was not found. The page diagnostics (browser extension menu) help explain why."
+      ),
+      control: vscode.l10n.t('{0} control'),
+      controls: vscode.l10n.t('{0} controls'),
+      withError: vscode.l10n.t('{0} with an error'),
+      withErrors: vscode.l10n.t('{0} with errors'),
+      result: vscode.l10n.t('{0} result'),
+      results: vscode.l10n.t('{0} results'),
+      clickHelp: vscode.l10n.t('Click: select in Studio and open the formula'),
+      truncated: vscode.l10n.t('Very busy screen: some elements are not reproduced.'),
+      formulaError: vscode.l10n.t('formula error'),
+    };
     return /* html */ `<!doctype html>
-<html lang="fr">
+<html lang="${esc(lang)}">
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${csp}">
@@ -229,21 +271,21 @@ class ScreenPreview {
 </style>
 </head>
 <body>
-  <div class="bar" role="toolbar" aria-label="Aperçu">
-    <label class="field" title="Écran affiché dans Studio">
+  <div class="bar" role="toolbar" aria-label="${esc(T.preview)}">
+    <label class="field" title="${esc(T.screenShown)}">
       <svg viewBox="0 0 16 16"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M2 5.5h12"/></svg>
-      <select id="screen" aria-label="Écran"></select>
+      <select id="screen" aria-label="${esc(T.screen)}"></select>
     </label>
     <label class="field search">
       <svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg>
-      <input id="filter" type="search" placeholder="Rechercher un contrôle" aria-label="Rechercher un contrôle" spellcheck="false">
-      <kbd title="Sélectionner le premier résultat">Entrée</kbd>
+      <input id="filter" type="search" placeholder="${esc(T.search)}" aria-label="${esc(T.search)}" spellcheck="false">
+      <kbd title="${esc(T.selectFirst)}">${esc(T.enter)}</kbd>
     </label>
     <span class="sep" aria-hidden="true"></span>
-    <button class="icon-btn" id="names" aria-pressed="false" title="Afficher le nom et le contour de tous les contrôles">
+    <button class="icon-btn" id="names" aria-pressed="false" title="${esc(T.showNames)}">
       <svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" stroke-dasharray="2 2"/><path d="M5 6h6M5 9h4"/></svg>
     </button>
-    <button class="icon-btn" id="refresh" title="Actualiser depuis Studio">
+    <button class="icon-btn" id="refresh" title="${esc(T.refresh)}">
       <svg viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 2.5v3h-3"/></svg>
     </button>
   </div>
@@ -254,6 +296,7 @@ class ScreenPreview {
 (() => {
   const vscode = acquireVsCodeApi();
   const $ = (id) => document.getElementById(id);
+  ${l10nScript(T, lang)}
   const saved = vscode.getState() || { names: false };
   const NAME = 'data-control-name';
   let state = null;
@@ -335,8 +378,6 @@ class ScreenPreview {
     return p;
   }
 
-  const plural = (n, one, many) => n + ' ' + (n > 1 ? many : one);
-
   function render() {
     $('names').setAttribute('aria-pressed', String(!!saved.names));
     $('status').textContent = '';
@@ -351,17 +392,15 @@ class ScreenPreview {
     sel.closest('.field').hidden = !screens.length;
 
     const command = (c) => ({ type: 'command', command: c });
-    if (!state.connected) return empty('plug', 'Studio non connecté', 'Ouvre ton app dans Power Apps Studio avec l’extension navigateur active : l’écran s’affichera ici.', ['Guide de démarrage', command('powerappsBridge.openWalkthrough')]);
-    if (state.error && !html) return empty('warn', 'Aperçu indisponible', 'Studio n’a pas répondu (' + state.error + '). Recharge l’extension navigateur et l’onglet Studio, puis réessaie.', ['Réessayer', { type: 'refresh' }]);
-    if (!mirror) return empty('load', 'Chargement de l’écran…', '');
+    if (!state.connected) return empty('plug', T.notConnected, T.notConnectedText, [T.gettingStarted, command('powerappsBridge.openWalkthrough')]);
+    if (state.error && !html) return empty('warn', T.unavailable, fmt(T.noAnswer, state.error), [T.retry, { type: 'refresh' }]);
+    if (!mirror) return empty('load', T.loading, '');
     if (!html) {
       return empty(
         'screen',
-        'Écran introuvable',
-        mirror.controlsFound
-          ? 'Des contrôles sont visibles mais aucun écran n’a été reconnu. Sélectionne un écran dans l’arborescence de Studio.'
-          : 'Le canevas de Studio n’a pas été trouvé. Le diagnostic de la page (menu de l’extension navigateur) aide à comprendre pourquoi.',
-        ['Réessayer', { type: 'refresh' }]
+        T.noScreen,
+        mirror.controlsFound ? T.noScreenControls : T.noCanvas,
+        [T.retry, { type: 'refresh' }]
       );
     }
 
@@ -393,13 +432,13 @@ class ScreenPreview {
 
     const hits = matches();
     const status = $('status');
-    status.append(pill('', plural(controls().length, 'contrôle', 'contrôles')));
+    status.append(pill('', plural(controls().length, T.control, T.controls)));
     const errs = state.errors.filter((n) => controls().includes(n)).length;
-    if (errs) status.append(pill('err', plural(errs, 'en erreur', 'en erreur')));
-    if (filter) status.append(pill('match', plural(hits.length, 'résultat', 'résultats')));
-    const help = el('span', 'help', 'Clic : sélectionner dans Studio et ouvrir la formule');
+    if (errs) status.append(pill('err', plural(errs, T.withError, T.withErrors)));
+    if (filter) status.append(pill('match', plural(hits.length, T.result, T.results)));
+    const help = el('span', 'help', T.clickHelp);
     status.append(help);
-    if (mirror.truncated) status.append(el('div', 'warn', 'Écran très chargé : une partie des éléments n’est pas reproduite.'));
+    if (mirror.truncated) status.append(el('div', 'warn', T.truncated));
   }
 
   function layout() {
@@ -462,7 +501,7 @@ class ScreenPreview {
     if (name !== hovered) { hovered = name; overlays(); }
     if (!name) { tip.style.display = 'none'; return; }
     tip.textContent = name;
-    if (state.errors.includes(name)) tip.append(el('span', 'bad', '⚠ erreur de formule'));
+    if (state.errors.includes(name)) tip.append(el('span', 'bad', '⚠ ' + T.formulaError));
     tip.style.display = 'block';
     tip.style.left = Math.min(e.clientX + 12, window.innerWidth - tip.offsetWidth - 4) + 'px';
     tip.style.top = e.clientY + 14 + 'px';

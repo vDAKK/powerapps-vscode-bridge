@@ -1,22 +1,23 @@
-# L'aperçu de l'écran
+# The screen preview
 
 ```
-┌ Écran ▾ ─ Rechercher un contrôle… ─ Noms ─ Contours ─ ⟳ ┐
-│ ┌──────────────────────────────────────────┐            │
-│ │  lblTitre                                │            │
-│ │  ┌──────────────┐  ┌──────────────┐      │            │
-│ │  │ galProjets   │  │ frmDetail    │      │            │
-│ │  │              │  │  [btnValider]│ ◀ clic : sélection  │
-│ │  └──────────────┘  └──────────────┘      │   + formule │
-│ └──────────────────────────────────────────┘            │
-└─────────────────────────────────────────────────────────┘
+┌ ▭ Screen ▾  🔍 Search for a control   Enter │ ▦  ⟳ ┐
+│  · · · · · ┌──────────────────────┐ · · · · · · · · │
+│  · · · · · │  lblTitle            │ · · · · · · · · │
+│  · · · · · │  ┌────────────────┐  │ · · · · · · · · │
+│  · · · · · │  │ galOrders      │  │ · · · · · · · · │
+│  · · · · · │  └────────────────┘  │ · · · · · · · · │
+│  · · · · · │  [ btnSubmit ] ◀ click: select + formula
+│  · · · · · └──────────────────────┘ · · · · · · · · │
+│ 6 controls  ● 1 error            Click: select …     │
+└──────────────────────────────────────────────────────┘
 ```
 
-- **Clic** sur un élément : il est sélectionné dans Studio et sa formule s'ouvre.
-- **Rechercher** : surligne les contrôles dont le nom correspond ; *Entrée* sélectionne le premier.
-- **Écran ▾** : change d'écran dans Studio.
-- Contour **bleu** : contrôle sélectionné. Contour **rouge pointillé** : formule en erreur.
+- **Click** an element: it is selected in Studio and its formula opens.
+- **Search**: highlights the controls whose name matches; *Enter* selects the first one.
+- **Screen ▾**: switches screens in Studio. **▦** shows the name and outline of every control.
+- **Blue** outline: selected control. **Red dashed** outline: formula in error.
 
-**Copie en direct**
+**A live copy**
 
-L'aperçu n'est pas une capture d'écran : c'est une copie de l'écran reconstruite à partir de Studio, nette à toutes les tailles et mise à jour quand tu modifies une formule. Aucune autorisation supplémentaire n'est nécessaire.
+The preview is not a screenshot: it is a copy of the screen rebuilt from Studio, sharp at any size and updated when you change a formula. No extra permission is needed.

@@ -387,13 +387,25 @@ function register(context, api) {
     return cache;
   }
 
-  const kindLabel = (s) =>
-    s.kinds.has('named') ? 'Formule nommée'
-      : s.kinds.has('collection') ? 'Collection'
-      : s.kinds.has('global') ? 'Variable globale'
-      : s.kinds.has('context') ? 'Variable de contexte'
-      : s.kinds.has('control') ? 'Contrôle'
+  /** Main kind of a symbol ('named', 'collection', 'global', 'context', 'control'), or null. */
+  const kindOf = (s) =>
+    s.kinds.has('named') ? 'named'
+      : s.kinds.has('collection') ? 'collection'
+      : s.kinds.has('global') ? 'global'
+      : s.kinds.has('context') ? 'context'
+      : s.kinds.has('control') ? 'control'
       : null;
+  const KIND_LABELS = {
+    named: () => vscode.l10n.t('Named formula'),
+    collection: () => vscode.l10n.t('Collection'),
+    global: () => vscode.l10n.t('Global variable'),
+    context: () => vscode.l10n.t('Context variable'),
+    control: () => vscode.l10n.t('Control'),
+  };
+  const kindLabel = (s) => {
+    const k = kindOf(s);
+    return k ? KIND_LABELS[k]() : null;
+  };
 
   const posAt = (text, off) => {
     const before = text.slice(0, off);
@@ -443,12 +455,19 @@ function register(context, api) {
         const at = nameAt(document, position);
         const s = at && index().symbols.get(at.name);
         if (!s) return null;
-        const label = kindLabel(s);
-        if (!label || label === 'Contrôle') {
+        const kind = kindOf(s);
+        if (!kind || kind === 'control') {
           if (!s.refs.length) return null;
-          const where = new Set(s.refs.map((r) => r.f.control));
-          return new vscode.Hover(`Référencé dans ${s.refs.length} formule(s) de ${where.size} contrôle(s)`, at.range);
+          const n = s.refs.length;
+          const c = new Set(s.refs.map((r) => r.f.control)).size;
+          const text =
+            n === 1 && c === 1 ? vscode.l10n.t('Referenced in {0} formula of {1} control', n, c)
+              : n === 1 ? vscode.l10n.t('Referenced in {0} formula of {1} controls', n, c)
+              : c === 1 ? vscode.l10n.t('Referenced in {0} formulas of {1} control', n, c)
+              : vscode.l10n.t('Referenced in {0} formulas of {1} controls', n, c);
+          return new vscode.Hover(text, at.range);
         }
+        const label = kindLabel(s);
         const md = new vscode.MarkdownString();
         md.appendMarkdown(`**${s.name}** · ${label}\n\n`);
         if (s.kinds.has('named') && s.defs[0]) {
@@ -457,14 +476,23 @@ function register(context, api) {
           md.appendCodeblock(body.length > 600 ? body.slice(0, 600) + '…' : body, 'powerfx');
         } else {
           const sites = [...s.defs, ...s.writes];
-          md.appendMarkdown(`Défini/modifié dans ${sites.length} endroit(s) :\n\n`);
+          md.appendMarkdown(
+            (sites.length === 1
+              ? vscode.l10n.t('Defined/modified in {0} place:', sites.length)
+              : vscode.l10n.t('Defined/modified in {0} places:', sites.length)) + '\n\n'
+          );
           for (const d of sites.slice(0, 8)) {
             const line = d.f.text.split('\n')[posAt(d.f.text, d.s).line].trim();
             md.appendMarkdown(`- \`${d.f.control}.${d.f.property}\` — ${line.length > 70 ? line.slice(0, 70) + '…' : line}\n`);
           }
-          if (sites.length > 8) md.appendMarkdown(`- … et ${sites.length - 8} autre(s)\n`);
+          if (sites.length > 8) md.appendMarkdown(`- ${vscode.l10n.t('… and {0} more', sites.length - 8)}\n`);
         }
-        md.appendMarkdown(`\nLu dans ${s.refs.length} formule(s).`);
+        md.appendMarkdown(
+          '\n' +
+            (s.refs.length === 1
+              ? vscode.l10n.t('Read in {0} formula.', s.refs.length)
+              : vscode.l10n.t('Read in {0} formulas.', s.refs.length))
+        );
         return new vscode.Hover(md, at.range);
       },
     })
@@ -477,7 +505,7 @@ function register(context, api) {
       prepareRename(document, position) {
         const at = nameAt(document, position);
         const s = at && index().symbols.get(at.name);
-        if (!s || !kindLabel(s)) throw new Error('Seuls les contrôles, variables, collections et formules nommées se renomment ici.');
+        if (!s || !kindOf(s)) throw new Error(vscode.l10n.t('Only controls, variables, collections and named formulas can be renamed here.'));
         return { range: at.range, placeholder: at.name };
       },
       async provideRenameEdits(document, position, newName) {
@@ -486,23 +514,24 @@ function register(context, api) {
         if (!s) return null;
         newName = newName.trim();
         if (!newName || newName === s.name) return null;
-        if (index().symbols.has(newName) && kindLabel(index().symbols.get(newName))) {
-          throw new Error(`"${newName}" est déjà utilisé.`);
+        if (index().symbols.has(newName) && kindOf(index().symbols.get(newName))) {
+          throw new Error(vscode.l10n.t('"{0}" is already in use.', newName));
         }
         if (s.kinds.has('control')) {
           await api.renameControl(s.name, newName); // Studio updates every reference itself
           return new vscode.WorkspaceEdit();
         }
-        if (!validName(newName)) throw new Error('Nom invalide (lettres, chiffres, _).');
+        if (!validName(newName)) throw new Error(vscode.l10n.t('Invalid name (letters, digits, _).'));
         const sites = [...s.defs, ...s.writes, ...s.refs];
         const files = new Set(sites.map((x) => x.f.uri.toString()));
         if (files.size > 1) {
+          const renameLabel = vscode.l10n.t('Rename');
           const ok = await vscode.window.showWarningMessage(
-            `Renommer « ${s.name} » modifie ${files.size} formules dans Studio (Studio va les ouvrir une par une).`,
+            vscode.l10n.t('Renaming "{0}" changes {1} formulas in Studio (Studio will open them one by one).', s.name, files.size),
             { modal: true },
-            'Renommer'
+            renameLabel
           );
-          if (ok !== 'Renommer') return null;
+          if (ok !== renameLabel) return null;
         }
         const edit = new vscode.WorkspaceEdit();
         for (const x of sites) edit.replace(x.f.uri, loc(x).range, newName);
@@ -520,17 +549,18 @@ function register(context, api) {
         const controls = api.controls();
         for (const s of index().symbols.values()) {
           if (q && !s.name.toLowerCase().includes(q)) continue;
+          const k = kindOf(s);
+          if (!k) continue;
           const label = kindLabel(s);
-          if (!label) continue;
           let at = s.defs[0] || s.writes[0];
           let kind = vscode.SymbolKind.Variable;
           let container = label;
-          if (label === 'Collection') kind = vscode.SymbolKind.Array;
-          if (label === 'Formule nommée') kind = vscode.SymbolKind.Constant;
-          if (label === 'Contrôle') {
+          if (k === 'collection') kind = vscode.SymbolKind.Array;
+          if (k === 'named') kind = vscode.SymbolKind.Constant;
+          if (k === 'control') {
             const node = controls.get(s.name);
             kind = node && node.level === 1 ? vscode.SymbolKind.Module : vscode.SymbolKind.Field;
-            container = (node && api.pathOf(s.name)[0]) || 'Contrôle';
+            container = (node && api.pathOf(s.name)[0]) || label;
             const f = index().formulas.find((x) => x.control === s.name);
             if (!f) continue;
             at = { f, s: 0, e: 0 };
@@ -607,10 +637,11 @@ function register(context, api) {
     if (!formulas.length) return;
     const byUri = new Map();
     const findings = [];
-    const add = (o, message, kind) => {
+    // uiMessage: localized, for the Problems view; message: English, for _lint.json (read by tools / AI).
+    const add = (o, uiMessage, message, kind) => {
       const l = loc(o);
-      const d = new vscode.Diagnostic(l.range, message, vscode.DiagnosticSeverity.Information);
-      d.source = 'Power Apps (nettoyage)';
+      const d = new vscode.Diagnostic(l.range, uiMessage, vscode.DiagnosticSeverity.Information);
+      d.source = vscode.l10n.t('Power Apps (clean-up)');
       d.tags = [vscode.DiagnosticTag.Unnecessary];
       d.code = kind;
       const key = l.uri.toString();
@@ -619,24 +650,30 @@ function register(context, api) {
       findings.push({ kind, message, control: o.f.control, property: o.f.property });
     };
     for (const s of symbols.values()) {
-      const label = kindLabel(s);
-      if (!label || label === 'Contrôle' || s.refs.length) continue;
-      const msg =
-        label === 'Collection' ? `Collection « ${s.name} » remplie mais jamais lue`
-          : label === 'Formule nommée' ? `Formule nommée « ${s.name} » jamais utilisée`
-          : `${label} « ${s.name} » définie mais jamais lue`;
-      for (const d of s.defs) add(d, msg, 'unused');
+      const k = kindOf(s);
+      if (!k || k === 'control' || s.refs.length) continue;
+      const [ui, msg] =
+        k === 'collection' ? [vscode.l10n.t('Collection "{0}" is filled but never read', s.name), `Collection "${s.name}" is filled but never read`]
+          : k === 'named' ? [vscode.l10n.t('Named formula "{0}" is never used', s.name), `Named formula "${s.name}" is never used`]
+          : k === 'global' ? [vscode.l10n.t('Global variable "{0}" is set but never read', s.name), `Global variable "${s.name}" is set but never read`]
+          : [vscode.l10n.t('Context variable "{0}" is set but never read', s.name), `Context variable "${s.name}" is set but never read`];
+      for (const d of s.defs) add(d, ui, msg, 'unused');
     }
     // Hidden controls that nothing refers to (Visible = false).
     for (const f of formulas) {
       if (f.property !== 'Visible' || f.text.trim().toLowerCase() !== 'false') continue;
       const s = symbols.get(f.control);
       if (s && s.refs.length) continue;
-      add({ f, s: 0, e: f.text.length }, `« ${f.control} » est masqué (Visible = false) et jamais référencé`, 'hidden');
+      add(
+        { f, s: 0, e: f.text.length },
+        vscode.l10n.t('"{0}" is hidden (Visible = false) and never referenced', f.control),
+        `"${f.control}" is hidden (Visible = false) and never referenced`,
+        'hidden'
+      );
     }
     for (const { uri, list } of byUri.values()) lint.set(uri, list);
     lastLint = findings;
-    api.writeWorkspaceFile('_lint.json', JSON.stringify({ updated: new Date().toISOString(), findings, naming: namingIssues() }, null, 2) + '\n');
+    api.writeWorkspaceFile('_lint.json', JSON.stringify({ updated: new Date().toISOString(), findings, naming: namingIssues().map(({ label, ...rest }) => rest) }, null, 2) + '\n');
   }
 
   const scheduleLint = () => {
@@ -727,24 +764,27 @@ function register(context, api) {
     const out = [];
     for (const [name, node] of api.controls()) {
       if (node.level <= 1 || !DEFAULT_NAME.test(name)) continue;
-      out.push({ name, screen: api.pathOf(name)[0], type: api.typeOf(node).label, suggestion: suggestName(name) });
+      out.push({ name, screen: api.pathOf(name)[0], type: api.typeOf(node).key, label: api.typeOf(node).label, suggestion: suggestName(name) });
     }
     return out;
   }
 
   async function cmdSuggestNames() {
     const issues = namingIssues();
-    if (!issues.length) return vscode.window.showInformationMessage('Power Apps : aucun contrôle avec un nom par défaut.');
+    if (!issues.length) return vscode.window.showInformationMessage(vscode.l10n.t('Power Apps: no control has a default name.'));
     const items = issues.map((i) => ({
       label: i.suggestion ? `${i.name}  →  ${i.suggestion}` : i.name,
-      description: [i.type, i.screen].filter(Boolean).join(' · '),
-      detail: i.suggestion ? undefined : 'Pas de suggestion (aucun texte/icône/donnée pour le décrire) : choisir pour saisir un nom',
+      description: [i.label, i.screen].filter(Boolean).join(' · '),
+      detail: i.suggestion ? undefined : vscode.l10n.t('No suggestion (no text/icon/data to describe it): pick it to type a name'),
       picked: !!i.suggestion,
       issue: i,
     }));
     const picks = await vscode.window.showQuickPick(items, {
       canPickMany: true,
-      placeHolder: `${issues.length} contrôle(s) au nom par défaut — cochez ceux à renommer (Studio met à jour les références)`,
+      placeHolder:
+        issues.length === 1
+          ? vscode.l10n.t('{0} control with a default name — check the ones to rename (Studio updates the references)', issues.length)
+          : vscode.l10n.t('{0} controls with a default name — check the ones to rename (Studio updates the references)', issues.length),
       matchOnDescription: true,
     });
     if (!picks || !picks.length) return;
@@ -753,16 +793,16 @@ function register(context, api) {
       let target = p.issue.suggestion;
       if (!target || picks.length <= 5) {
         target = await vscode.window.showInputBox({
-          title: `Renommer ${p.issue.name}`,
+          title: vscode.l10n.t('Rename {0}', p.issue.name),
           value: target || p.issue.name,
-          prompt: `${p.issue.type}${p.issue.screen ? ' · ' + p.issue.screen : ''}`,
+          prompt: `${p.issue.label}${p.issue.screen ? ' · ' + p.issue.screen : ''}`,
         });
       }
       if (target && target.trim() && target.trim() !== p.issue.name) plan.push([p.issue.name, target.trim()]);
     }
     if (!plan.length) return;
     await vscode.window.withProgress(
-      { location: vscode.ProgressLocation.Notification, title: 'Power Apps : renommage', cancellable: true },
+      { location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('Power Apps: renaming'), cancellable: true },
       async (progress, token) => {
         let done = 0;
         for (const [from, to] of plan) {
@@ -772,11 +812,14 @@ function register(context, api) {
             await api.renameControl(from, to, { refresh: false });
             done++;
           } catch (e) {
-            vscode.window.showWarningMessage(`Power Apps : ${from} → ${to} : ${e.message}`);
+            vscode.window.showWarningMessage(vscode.l10n.t('Power Apps: {0} → {1}: {2}', from, to, e.message));
           }
         }
         await api.afterRenames();
-        vscode.window.setStatusBarMessage(`$(check) ${done} contrôle(s) renommé(s)`, 5000);
+        vscode.window.setStatusBarMessage(
+          done === 1 ? vscode.l10n.t('$(check) {0} control renamed', done) : vscode.l10n.t('$(check) {0} controls renamed', done),
+          5000
+        );
       }
     );
   }
@@ -784,7 +827,7 @@ function register(context, api) {
   // --- search in formulas --------------------------------------------------------------------
   async function cmdSearchFormulas() {
     const qp = vscode.window.createQuickPick();
-    qp.placeholder = 'Rechercher dans toutes les formules (texte, nom de variable, de contrôle…)';
+    qp.placeholder = vscode.l10n.t('Search all formulas (text, variable name, control name…)');
     qp.matchOnDescription = true;
     qp.matchOnDetail = true;
     const update = (q) => {
@@ -798,7 +841,7 @@ function register(context, api) {
         const lines = f.text.split('\n');
         for (let i = 0; i < lines.length && items.length < 300; i++) {
           if (!lines[i].toLowerCase().includes(query)) continue;
-          items.push({ label: `${f.control}.${f.property}`, description: `ligne ${i + 1}`, detail: lines[i].trim().slice(0, 160), f, line: i, alwaysShow: true });
+          items.push({ label: `${f.control}.${f.property}`, description: vscode.l10n.t('line {0}', i + 1), detail: lines[i].trim().slice(0, 160), f, line: i, alwaysShow: true });
         }
       }
       qp.items = items;
@@ -825,7 +868,7 @@ function register(context, api) {
     if (!name) return;
     const s = index().symbols.get(name);
     const locations = s ? [...s.defs, ...s.writes, ...s.refs].map(loc) : [];
-    if (!locations.length) return vscode.window.showInformationMessage(`Power Apps : « ${name} » n'est référencé dans aucune formule connue.`);
+    if (!locations.length) return vscode.window.showInformationMessage(vscode.l10n.t('Power Apps: "{0}" is not referenced in any known formula.', name));
     await vscode.commands.executeCommand('editor.action.showReferences', locations[0].uri, locations[0].range.start, locations);
   }
 

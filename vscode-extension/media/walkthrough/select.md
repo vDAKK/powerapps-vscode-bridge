@@ -1,16 +1,16 @@
-# Une formule = un onglet
+# One formula, one tab
 
-Chaque formule s'ouvre comme un fichier `Contrôle.Propriété.fx` :
+Each formula opens as a `Control.Property.fx` file:
 
 ```
-powerfx:/btnValider/btnValider.OnSelect.fx
+powerfx:/btnSubmit/btnSubmit.OnSelect.fx
 ```
 
-- **Studio → VS Code** : changer de contrôle ou de propriété dans Studio ouvre la formule correspondante.
-- **VS Code → Studio** : chaque frappe est écrite dans la barre de formule de Studio (l'historique *Annuler* de Studio est conservé).
-- **Erreurs** : celles que signale Studio sont soulignées dans l'éditeur et listées dans le panneau *Problèmes*.
+- **Studio → VS Code**: selecting another control or property in Studio opens its formula.
+- **VS Code → Studio**: every keystroke is written into Studio's formula bar (Studio's *Undo* history is kept).
+- **Errors** reported by Studio are underlined in the editor and listed in the *Problems* panel. Their count shows on the Power Apps icon of the activity bar.
 
-**Astuces**
+**Tips**
 
-- Un seul onglet de formule reste ouvert : **épingle** un onglet pour le garder.
-- Le bouton `👁` de la barre d'état indique que le suivi de la sélection est coupé ; le menu d'aide le réactive.
+- A single formula tab stays open: **pin** a tab to keep it.
+- An eye icon in the status bar means selection following is off; the help menu turns it back on.

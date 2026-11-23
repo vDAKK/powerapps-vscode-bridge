@@ -1,13 +1,21 @@
-# Raccourcis
+# Navigate without the mouse
 
-| Raccourci | Action |
+Above each formula, the **breadcrumb** is clickable:
+
+```
+▭ scrHome › ctnFooter › ⬭ btnSubmit · OnSelect ⌄ · Preview · 2 references
+```
+
+Go up to a container, switch property, show the control on screen or list the formulas that use it.
+
+| Shortcut | Action |
 |---|---|
-| `Ctrl+Alt+G` | Aller à une formule : tape `Contrôle.Propriété` |
-| `Ctrl+Alt+P` | Changer de propriété du contrôle courant |
-| `Ctrl+clic` sur `galProjets` | Sélectionner ce contrôle dans Studio |
-| `Ctrl+clic` sur `txtNom.Default` | Ouvrir cette formule |
-| Clic sur la barre d'état | Choisir un autre contrôle / menu d'aide |
+| `Ctrl+Alt+F` | Search for a control |
+| `Ctrl+Alt+P` | Switch property of the current control |
+| `Ctrl+Alt+G` | Go to a formula: type `Control.Property` |
+| `Ctrl+Alt+Shift+F` | Search all formulas |
+| `Ctrl+click` on `galOrders` | Select that control in Studio |
+| `Ctrl+click` on `txtName.Default` | Open that formula |
+| `Shift+Alt+F` | Format the formula |
 
-Dans l'éditeur, les boutons en haut à droite donnent accès aux mêmes actions : **propriété**, **contrôle**, **aperçu**.
-
-L'autocomplétion propose les fonctions Power Fx, les noms de contrôles et, après `Contrôle.`, ses propriétés (une fois chargées).
+Completion offers Power Fx functions, control names and, after `Control.`, its properties.

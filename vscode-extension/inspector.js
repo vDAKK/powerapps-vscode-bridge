@@ -6,7 +6,7 @@
 
 const vscode = require('vscode');
 const crypto = require('crypto');
-const { typeIconScript } = require('./ui-icons');
+const { typeIconScript, escapeHtml: esc, uiLanguage, l10nScript } = require('./ui-icons');
 
 class Inspector {
   /**
@@ -67,8 +67,42 @@ class Inspector {
   page() {
     const nonce = crypto.randomBytes(16).toString('base64');
     const csp = ["default-src 'none'", "style-src 'unsafe-inline'", `script-src 'nonce-${nonce}'`].join('; ');
+    const lang = uiLanguage(vscode);
+    const T = {
+      location: vscode.l10n.t('Location'),
+      showInPreview: vscode.l10n.t('Show in the screen preview'),
+      preview: vscode.l10n.t('Preview'),
+      refsTitle: vscode.l10n.t('Formulas that reference this control'),
+      refs: vscode.l10n.t('References'),
+      renameTitle: vscode.l10n.t('Rename (Studio updates the references)'),
+      rename: vscode.l10n.t('Rename'),
+      copyName: vscode.l10n.t('Copy name'),
+      filter: vscode.l10n.t('Filter'),
+      filterTitle: vscode.l10n.t('Filter by property name or formula text (shortcut: /)'),
+      filterLabel: vscode.l10n.t('Filter properties'),
+      shown: vscode.l10n.t('Properties shown'),
+      changedTitle: vscode.l10n.t('Properties that are not at their default value'),
+      changed: vscode.l10n.t('Changed'),
+      allTitle: vscode.l10n.t('All properties of the control'),
+      all: vscode.l10n.t('All'),
+      noSelection: vscode.l10n.t('No control selected'),
+      noSelectionText: vscode.l10n.t('Select a control in Studio, in the tree view or in the screen preview.'),
+      notConnected: vscode.l10n.t('Studio not connected'),
+      notConnectedText: vscode.l10n.t('Open your app in Power Apps Studio with the browser extension enabled.'),
+      propError: vscode.l10n.t('{0} property with an error'),
+      propErrors: vscode.l10n.t('{0} properties with errors'),
+      select: vscode.l10n.t('Select {0}'),
+      suggestion: vscode.l10n.t('Default name. Suggestion:'),
+      renameTo: vscode.l10n.t('Rename to {0}'),
+      byDefault: vscode.l10n.t('default'),
+      notLoaded: vscode.l10n.t('not loaded'),
+      noMatch: vscode.l10n.t('No property matches "{0}".'),
+      allDefault: vscode.l10n.t('All properties are at their default value.'),
+      noneKnown: vscode.l10n.t('No known properties.'),
+      loadAll: vscode.l10n.t('Load all properties from Studio'),
+    };
     return /* html */ `<!doctype html>
-<html lang="fr">
+<html lang="${esc(lang)}">
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${csp}">
@@ -168,15 +202,15 @@ class Inspector {
         <div class="avatar" id="avatar"></div>
         <div class="name"><b id="name"></b><span id="type"></span></div>
       </div>
-      <nav class="crumbs" id="crumbs" aria-label="Emplacement"></nav>
+      <nav class="crumbs" id="crumbs" aria-label="${esc(T.location)}"></nav>
       <div class="actions">
-        <button class="act" data-cmd="powerappsBridge.revealInPreview" title="Montrer dans l’aperçu de l’écran">
-          <svg viewBox="0 0 16 16"><path d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></svg>Aperçu</button>
-        <button class="act" data-cmd="powerappsBridge.findUsages" title="Formules qui font référence à ce contrôle">
-          <svg viewBox="0 0 16 16"><path d="M3 4h10M3 8h6M3 12h8"/></svg>Références<span class="n" id="refs"></span></button>
-        <button class="act icon" data-cmd="powerappsBridge.renameControl" title="Renommer (Studio met à jour les références)" aria-label="Renommer">
+        <button class="act" data-cmd="powerappsBridge.revealInPreview" title="${esc(T.showInPreview)}">
+          <svg viewBox="0 0 16 16"><path d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></svg>${esc(T.preview)}</button>
+        <button class="act" data-cmd="powerappsBridge.findUsages" title="${esc(T.refsTitle)}">
+          <svg viewBox="0 0 16 16"><path d="M3 4h10M3 8h6M3 12h8"/></svg>${esc(T.refs)}<span class="n" id="refs"></span></button>
+        <button class="act icon" data-cmd="powerappsBridge.renameControl" title="${esc(T.renameTitle)}" aria-label="${esc(T.rename)}">
           <svg viewBox="0 0 16 16"><path d="M10.5 2.5l3 3L6 13H3v-3z"/></svg></button>
-        <button class="act icon" data-cmd="powerappsBridge.copyName" title="Copier le nom" aria-label="Copier le nom">
+        <button class="act icon" data-cmd="powerappsBridge.copyName" title="${esc(T.copyName)}" aria-label="${esc(T.copyName)}">
           <svg viewBox="0 0 16 16"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5"/><path d="M3 10.5V3.5A1 1 0 0 1 4 2.5h6.5"/></svg></button>
       </div>
       <div class="note" id="note" hidden></div>
@@ -184,11 +218,11 @@ class Inspector {
     <div class="tools">
       <label class="search">
         <svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg>
-        <input id="filter" type="search" placeholder="Filtrer" title="Filtrer par nom de propriété ou texte de formule (raccourci : /)" aria-label="Filtrer les propriétés" spellcheck="false">
+        <input id="filter" type="search" placeholder="${esc(T.filter)}" title="${esc(T.filterTitle)}" aria-label="${esc(T.filterLabel)}" spellcheck="false">
       </label>
-      <div class="seg" role="group" aria-label="Propriétés affichées">
-        <button id="modeSet" aria-pressed="true" title="Propriétés qui ne sont pas à leur valeur par défaut">Modifiées</button>
-        <button id="modeAll" aria-pressed="false" title="Toutes les propriétés du contrôle">Toutes</button>
+      <div class="seg" role="group" aria-label="${esc(T.shown)}">
+        <button id="modeSet" aria-pressed="true" title="${esc(T.changedTitle)}">${esc(T.changed)}</button>
+        <button id="modeAll" aria-pressed="false" title="${esc(T.allTitle)}">${esc(T.all)}</button>
       </div>
     </div>
     <div id="list" role="list"></div>
@@ -198,6 +232,7 @@ class Inspector {
 (() => {
   const vscode = acquireVsCodeApi();
   const $ = (id) => document.getElementById(id);
+  ${l10nScript(T, lang)}
   const ui = Object.assign({ mode: 'set', closed: {} }, vscode.getState() || {});
   let s = null;
   let filter = '';
@@ -258,8 +293,8 @@ class Inspector {
     if (!s) return;
     if (!s.control) {
       return s.connected
-        ? empty('Aucun contrôle sélectionné', 'Sélectionne un contrôle dans Studio, dans l’arborescence ou dans l’aperçu de l’écran.')
-        : empty('Studio non connecté', 'Ouvre ton app dans Power Apps Studio avec l’extension navigateur active.');
+        ? empty(T.noSelection, T.noSelectionText)
+        : empty(T.notConnected, T.notConnectedText);
     }
     $('empty').hidden = true;
     $('main').hidden = false;
@@ -269,7 +304,7 @@ class Inspector {
     $('avatar').classList.toggle('bad', errCount > 0);
     $('name').textContent = s.control;
     $('name').title = s.control;
-    $('type').textContent = s.typeLabel + (errCount ? ' · ' + errCount + (errCount > 1 ? ' propriétés en erreur' : ' propriété en erreur') : '');
+    $('type').textContent = s.typeLabel + (errCount ? ' · ' + plural(errCount, T.propError, T.propErrors) : '');
 
     const crumbs = $('crumbs');
     crumbs.textContent = '';
@@ -277,7 +312,7 @@ class Inspector {
     s.path.forEach((p, i) => {
       if (i) crumbs.append(el('i', null, '›'));
       const b = el('button', null, p);
-      b.title = 'Sélectionner ' + p;
+      b.title = fmt(T.select, p);
       b.onclick = () => vscode.postMessage({ type: 'select', name: p });
       crumbs.append(b);
     });
@@ -288,14 +323,14 @@ class Inspector {
     note.textContent = '';
     note.hidden = !s.suggestion;
     if (s.suggestion) {
-      note.append('Nom par défaut. Suggestion : ');
+      note.append(T.suggestion + ' ');
       const b = el('button', null, s.suggestion);
-      b.title = 'Renommer en ' + s.suggestion;
+      b.title = fmt(T.renameTo, s.suggestion);
       b.onclick = () => vscode.postMessage({ type: 'command', command: 'powerappsBridge.renameControl', args: [{ name: s.control }] });
       note.append(b);
     }
 
-    // "Toutes" stays meaningful when another control gets selected: fetch its list once (it opens Studio's
+    // "All" stays meaningful when another control gets selected: fetch its list once (it opens Studio's
     // property dropdown briefly, hence only on demand).
     if (ui.mode === 'all' && !s.listed && s.connected && requested !== s.control) {
       requested = s.control;
@@ -331,7 +366,7 @@ class Inspector {
         const name = el('span', 'p');
         highlight(name, p.name);
         const f = el('span', 'f' + (p.formula == null ? ' dim' : ''));
-        if (p.formula == null) f.textContent = s.exported ? 'par défaut' : 'non chargée';
+        if (p.formula == null) f.textContent = s.exported ? T.byDefault : T.notLoaded;
         else highlight(f, p.preview);
         row.append(name, f);
         row.title = p.name + (p.formula != null ? '\\n\\n' + p.formula.slice(0, 600) : '') + (p.errors.length ? '\\n\\n⚠ ' + p.errors.join('\\n⚠ ') : '');
@@ -347,11 +382,11 @@ class Inspector {
     more.hidden = true;
     if (!visible.length) {
       more.hidden = false;
-      more.append(filter ? 'Aucune propriété ne correspond à « ' + filter + ' ».' : ui.mode === 'set' ? 'Toutes les propriétés sont à leur valeur par défaut.' : 'Aucune propriété connue.');
+      more.append(filter ? fmt(T.noMatch, filter) : ui.mode === 'set' ? T.allDefault : T.noneKnown);
     }
     if (ui.mode === 'all' && !s.listed) {
       more.hidden = false;
-      const b = el('button', 'primary', 'Charger toutes les propriétés depuis Studio');
+      const b = el('button', 'primary', T.loadAll);
       b.onclick = () => vscode.postMessage({ type: 'command', command: 'powerappsBridge.loadProperties' });
       more.append(b);
     }

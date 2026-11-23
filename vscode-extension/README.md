@@ -2,7 +2,9 @@
 
 Write the Power Fx formulas of your canvas apps in VS Code, kept in sync live with Power Apps Studio.
 
-> Unofficial project, not affiliated with or endorsed by Microsoft. Power Apps and Visual Studio Code are trademarks of Microsoft. The extension's interface is in French.
+> Unofficial project, not affiliated with or endorsed by Microsoft. Power Apps and Visual Studio Code are trademarks of Microsoft.
+>
+> Available in English and French: the extension follows VS Code's display language.
 
 ![VS Code with the Application view, the control inspector, a formula and the screen preview](https://raw.githubusercontent.com/vDAKK/powerapps-vscode-bridge/main/assets/screenshots/vscode.png)
 
@@ -37,7 +39,7 @@ The status bar then shows the selected control. A walkthrough opens on first ins
 | `/` | Filter, in the Application and Control views |
 | `F2` | Rename the control, in the Application view |
 
-All commands are in the command palette under **Power Apps**.
+All commands are in the command palette under **Power Apps** (for example *Power Apps: Screen preview*).
 
 ## Settings
 
@@ -55,7 +57,7 @@ All commands are in the command palette under **Power Apps**.
 ## Privacy and security
 
 - The WebSocket server listens on `127.0.0.1` only and accepts browser extensions only (`chrome-extension://`, `moz-extension://` origins), never web pages.
-- Each browser extension must be approved once in VS Code, so another extension installed in your browser cannot read or change your formulas. The command *Power Apps : Oublier les extensions navigateur autorisées* (forget approved browser extensions) revokes the approvals.
+- Each browser extension must be approved once in VS Code, so another extension installed in your browser cannot read or change your formulas. The command *Power Apps: Forget approved browser extensions* revokes the approvals.
 - No data leaves your computer: formulas travel between your browser and VS Code locally. No telemetry. See the [privacy policy](https://github.com/vDAKK/powerapps-vscode-bridge/blob/main/PRIVACY.md).
 
 ## Limitations

@@ -27,4 +27,26 @@ function typeIconScript() {
   );
 }
 
-module.exports = { typeIconScript };
+/** Escapes text for an HTML text or attribute context. */
+const escapeHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** JSON safe to inline in a <script> element. */
+const scriptJson = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
+
+/** The page's language (for <html lang> and plural rules), from VS Code's display language. */
+const uiLanguage = (vscode) => String((vscode.env && vscode.env.language) || 'en').slice(0, 2).toLowerCase();
+
+/**
+ * JS source defining, inside a webview script, the localized strings T (built in the extension host with
+ * vscode.l10n.t), fmt(template, ...args) for {0}-style placeholders and plural(n, one, many).
+ */
+function l10nScript(T, lang) {
+  return (
+    `const T = ${scriptJson(T)};\n` +
+    `const SINGULAR_ZERO = ${scriptJson(lang === 'fr')};\n` +
+    "const fmt = (s, ...a) => a.reduce((r, v, i) => r.split('{' + i + '}').join(String(v)), s);\n" +
+    'const plural = (n, one, many) => fmt(n === 1 || (n === 0 && SINGULAR_ZERO) ? one : many, n);\n'
+  );
+}
+
+module.exports = { typeIconScript, escapeHtml, scriptJson, uiLanguage, l10nScript };

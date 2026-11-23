@@ -1,27 +1,28 @@
-# Comment ça se connecte
+# How it connects
 
 ```
-Power Apps Studio (navigateur)
-        │  extension navigateur « Power Apps X VS Code »
+Power Apps Studio (browser)
+        │  "Power Apps X VS Code" browser extension
         ▼
-ws://127.0.0.1:8765   (local uniquement)
+ws://127.0.0.1:8765   (local only)
         │
         ▼
-VS Code (cette extension)
+VS Code (this extension)
 ```
 
-**Barre d'état de VS Code**
+**First connection:** VS Code asks whether it can trust the browser extension. Answer **Allow**; it only asks once.
 
-| Affichage | Signification |
+**VS Code status bar**
+
+| Shows | Meaning |
 |---|---|
-| `⊘ Power Apps` | Serveur arrêté : *Redémarrer le serveur* |
-| `Power Apps` débranché | En attente de Studio |
-| `▣ NomDuContrôle` | Connecté, contrôle sélectionné |
+| `⊘ Power Apps` | Server stopped: *Restart server* |
+| `Power Apps` unplugged | Waiting for Studio |
+| `▣ ControlName` | Connected, control selected |
 
-Clique sur la barre d'état à tout moment pour ouvrir le menu d'aide.
+Click the status bar item at any time for the help menu.
 
-**Ça ne se connecte pas ?**
+**Not connecting?**
 
-- L'icône de l'extension navigateur affiche `ON` quand la connexion est établie.
-- Le port doit être le même des deux côtés (8765 par défaut).
-- Le menu de l'extension navigateur propose *Reconnecter* et un *Diagnostic de la page*.
+- The browser extension's popup shows the connection state and what to do next.
+- The port must be the same on both sides (8765 by default). If another VS Code window already uses it, VS Code says so and offers to retry or change the port.

@@ -6,7 +6,7 @@
 
 **Écris les formules Power Fx de tes canvas apps dans VS Code, synchronisées en direct avec Power Apps Studio.**
 
-Extension VS Code + extension navigateur (Chrome, Edge, Firefox) · non officielle, non affiliée à Microsoft
+Extension VS Code + extension navigateur (Chrome, Edge, Firefox) · français et anglais · non officielle, non affiliée à Microsoft
 
 </div>
 

@@ -6,7 +6,7 @@
 
 const vscode = require('vscode');
 const crypto = require('crypto');
-const { typeIconScript } = require('./ui-icons');
+const { typeIconScript, escapeHtml: esc, uiLanguage, l10nScript } = require('./ui-icons');
 
 class Outline {
   /**
@@ -75,8 +75,48 @@ class Outline {
   page() {
     const nonce = crypto.randomBytes(16).toString('base64');
     const csp = ["default-src 'none'", "style-src 'unsafe-inline'", `script-src 'nonce-${nonce}'`].join('; ');
+    const lang = uiLanguage(vscode);
+    const T = {
+      search: vscode.l10n.t('Search for a control'),
+      filterTitle: vscode.l10n.t('Filter by name or type (shortcut: /)'),
+      reveal: vscode.l10n.t('Show the selected control'),
+      collapse: vscode.l10n.t('Collapse all'),
+      tree: vscode.l10n.t('Screens and controls'),
+      stopped: vscode.l10n.t('Server stopped'),
+      stoppedText: vscode.l10n.t('The port may already be in use by another VS Code window.'),
+      restart: vscode.l10n.t('Restart the server'),
+      showLog: vscode.l10n.t('Show the log'),
+      waiting: vscode.l10n.t('Waiting for Power Apps Studio'),
+      openPowerApps: vscode.l10n.t('Open Power Apps'),
+      gettingStarted: vscode.l10n.t('Getting started'),
+      log: vscode.l10n.t('Log'),
+      step1: vscode.l10n.t('Install the "Power Apps X VS Code" browser extension.'),
+      step2: vscode.l10n.t('Open your canvas app for editing in Studio.'),
+      step3: vscode.l10n.t('Select a control: its formula opens here.'),
+      loading: vscode.l10n.t('Loading the app…'),
+      loadingText: vscode.l10n.t('Reading screens and controls from Studio.'),
+      emptyTree: vscode.l10n.t('Empty tree view'),
+      emptyTreeText: vscode.l10n.t(
+        'Studio is connected but its Tree view panel is not shown. Open it in Studio, then reload.'
+      ),
+      reload: vscode.l10n.t('Reload'),
+      screen: vscode.l10n.t('{0} screen'),
+      screens: vscode.l10n.t('{0} screens'),
+      control: vscode.l10n.t('{0} control'),
+      controls: vscode.l10n.t('{0} controls'),
+      offline: vscode.l10n.t('offline'),
+      error: vscode.l10n.t('{0} error'),
+      errors: vscode.l10n.t('{0} errors'),
+      problems: vscode.l10n.t('Open the Problems view'),
+      openProperty: vscode.l10n.t('Open a property…'),
+      showInPreview: vscode.l10n.t('Show in the preview'),
+      groupTitle: vscode.l10n.t('Controls opened during the session but missing from the loaded tree view'),
+      formulaErrors: vscode.l10n.t('{0} formula(s) with errors'),
+      defaultName: vscode.l10n.t('Default name: right-click › Rename'),
+      noMatch: vscode.l10n.t('No control matches "{0}".'),
+    };
     return /* html */ `<!doctype html>
-<html lang="fr">
+<html lang="${esc(lang)}">
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${csp}">
@@ -172,21 +212,22 @@ class Outline {
       <div class="bar">
         <label class="search">
           <svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg>
-          <input id="filter" type="search" placeholder="Rechercher un contrôle" aria-label="Rechercher un contrôle" spellcheck="false" title="Filtrer par nom ou type (raccourci : /)">
+          <input id="filter" type="search" placeholder="${esc(T.search)}" aria-label="${esc(T.search)}" spellcheck="false" title="${esc(T.filterTitle)}">
         </label>
-        <button class="ib" id="reveal" title="Afficher le contrôle sélectionné" aria-label="Afficher le contrôle sélectionné">
+        <button class="ib" id="reveal" title="${esc(T.reveal)}" aria-label="${esc(T.reveal)}">
           <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg></button>
-        <button class="ib" id="collapse" title="Tout replier" aria-label="Tout replier">
+        <button class="ib" id="collapse" title="${esc(T.collapse)}" aria-label="${esc(T.collapse)}">
           <svg viewBox="0 0 16 16"><path d="m4.5 9.5 3.5-3 3.5 3"/><path d="M3 13h10"/></svg></button>
       </div>
     </div>
-    <div id="tree" role="tree" aria-label="Écrans et contrôles"></div>
+    <div id="tree" role="tree" aria-label="${esc(T.tree)}"></div>
   </div>
 <script nonce="${nonce}">
 (() => {
   const vscode = acquireVsCodeApi();
   const $ = (id) => document.getElementById(id);
   ${typeIconScript()}
+  ${l10nScript(T, lang)}
   const ui = Object.assign({ open: {} }, vscode.getState() || {});
   const save = () => vscode.setState(ui);
   let s = null;
@@ -309,20 +350,20 @@ class Outline {
     if (!s) return;
     const command = (c) => ({ type: 'command', command: c });
     if (!s.server) {
-      return empty('<circle cx="8" cy="8" r="6"/><path d="M4 12 12 4"/>', 'Serveur arrêté', 'Le port est peut-être déjà utilisé par une autre fenêtre VS Code.',
-        [['Redémarrer le serveur', command('powerappsBridge.restart'), true], ['Afficher le journal', command('powerappsBridge.showLog')]]);
+      return empty('<circle cx="8" cy="8" r="6"/><path d="M4 12 12 4"/>', T.stopped, T.stoppedText,
+        [[T.restart, command('powerappsBridge.restart'), true], [T.showLog, command('powerappsBridge.showLog')]]);
     }
     if (!s.connected && !s.rows.length) {
-      return empty('<path d="M6 2v3M10 2v3M4.5 5h7v3a3.5 3.5 0 0 1-7 0zM8 11.5V14"/>', 'En attente de Power Apps Studio', null,
-        [['Ouvrir Power Apps', { type: 'open', url: 'https://make.powerapps.com/' }, true], ['Guide de démarrage', command('powerappsBridge.openWalkthrough')], ['Journal', command('powerappsBridge.showLog')]],
-        ['Installe l’extension navigateur « Power Apps X VS Code ».', 'Ouvre ta canvas app en modification dans Studio.', 'Sélectionne un contrôle : sa formule s’ouvre ici.']);
+      return empty('<path d="M6 2v3M10 2v3M4.5 5h7v3a3.5 3.5 0 0 1-7 0zM8 11.5V14"/>', T.waiting, null,
+        [[T.openPowerApps, { type: 'open', url: 'https://make.powerapps.com/' }, true], [T.gettingStarted, command('powerappsBridge.openWalkthrough')], [T.log, command('powerappsBridge.showLog')]],
+        [T.step1, T.step2, T.step3]);
     }
     if (!s.rows.length) {
       return s.loading
-        ? empty('<path d="M8 2a6 6 0 1 0 6 6"/>', 'Chargement de l’application…', 'Lecture des écrans et des contrôles depuis Studio.')
-        : empty('<rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M2 5.5h12"/>', 'Arborescence vide',
-            'Studio est connecté mais son panneau Arborescence n’est pas affiché. Ouvre-le dans Studio, puis recharge.',
-            [['Recharger', command('powerappsBridge.refreshTree'), true]]);
+        ? empty('<path d="M8 2a6 6 0 1 0 6 6"/>', T.loading, T.loadingText)
+        : empty('<rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M2 5.5h12"/>', T.emptyTree,
+            T.emptyTreeText,
+            [[T.reload, command('powerappsBridge.refreshTree'), true]]);
     }
     $('empty').hidden = true;
     $('main').hidden = false;
@@ -331,12 +372,12 @@ class Outline {
     const sum = $('sum');
     sum.textContent = '';
     if (s.loading) sum.append(el('span', 'spin'));
-    sum.append(s.screens + (s.screens > 1 ? ' écrans' : ' écran') + ' · ' + s.controls + (s.controls > 1 ? ' contrôles' : ' contrôle'));
-    if (!s.connected) sum.append(' · hors ligne');
+    sum.append(plural(s.screens, T.screen, T.screens) + ' · ' + plural(s.controls, T.control, T.controls));
+    if (!s.connected) sum.append(' · ' + T.offline);
     if (s.errors) {
       const p = el('button', 'pill');
-      p.append(el('i'), s.errors + (s.errors > 1 ? ' erreurs' : ' erreur'));
-      p.title = 'Ouvrir la vue Problèmes';
+      p.append(el('i'), plural(s.errors, T.error, T.errors));
+      p.title = T.problems;
       p.onclick = () => cmd('workbench.actions.view.problems');
       sum.append(p);
     }
@@ -399,16 +440,16 @@ class Outline {
       if (n.kids && !n.group) meta.append(el('span', 'cnt', String(n.count)));
       if (!n.group) {
         const acts = el('span', 'acts');
-        const a1 = el('button'); a1.innerHTML = PROPS; a1.title = 'Ouvrir une propriété…';
+        const a1 = el('button'); a1.innerHTML = PROPS; a1.title = T.openProperty;
         a1.onclick = (e) => { e.stopPropagation(); cmd('powerappsBridge.pickProperty', [n.name]); };
-        const a2 = el('button'); a2.innerHTML = EYE; a2.title = 'Montrer dans l’aperçu';
+        const a2 = el('button'); a2.innerHTML = EYE; a2.title = T.showInPreview;
         a2.onclick = (e) => { e.stopPropagation(); cmd('powerappsBridge.revealInPreview', [{ name: n.name }]); };
         acts.append(a1, a2);
         meta.append(acts);
       }
       row.append(indent, tw, ty, nm, meta);
-      row.title = n.group ? 'Contrôles ouverts pendant la session mais absents de l’arborescence chargée'
-        : n.name + ' · ' + n.typeLabel + (n.path ? '\\n' + n.path : '') + (n.errors ? '\\n⚠ ' + n.errors + ' formule(s) en erreur' : '') + (n.def ? '\\nNom par défaut : clic droit › Renommer' : '');
+      row.title = n.group ? T.groupTitle
+        : n.name + ' · ' + n.typeLabel + (n.path ? '\\n' + n.path : '') + (n.errors ? '\\n⚠ ' + fmt(T.formulaErrors, n.errors) : '') + (n.def ? '\\n' + T.defaultName : '');
       if (!n.group) {
         row.dataset.vscodeContext = JSON.stringify({ webviewSection: 'control', name: n.name, preventDefaultContextMenuItems: true });
         row.onclick = () => { if (n.kids && curNode && n.i === curNode.i) toggle(n, !isOpen(n)); else select(n.name); };
@@ -418,7 +459,7 @@ class Outline {
       }
       tree.append(row);
     }
-    if (filter && !hits.size) tree.append(el('div', 'none', 'Aucun contrôle ne correspond à « ' + filter + ' ».'));
+    if (filter && !hits.size) tree.append(el('div', 'none', fmt(T.noMatch, filter)));
     if (focusedName != null) focusRow(focusedName);
   }
 
