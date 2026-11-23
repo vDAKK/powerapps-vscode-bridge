@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Power Apps X VS Code",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Live two-way sync between the Power Apps Studio formula bar and VS Code. Unofficial, not affiliated with Microsoft.",
   "icons": {
     "16": "icons/icon-16.png",

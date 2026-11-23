@@ -1,39 +1,43 @@
 # Power Apps X VS Code
 
-Edit Power Apps canvas app formulas in VS Code, with a live two-way sync to the formula bar of Power Apps Studio.
+Write the Power Fx formulas of your canvas apps in VS Code, kept in sync live with Power Apps Studio.
 
-> Unofficial project, not affiliated with or endorsed by Microsoft. Power Apps and Visual Studio Code are trademarks of Microsoft.
+> Unofficial project, not affiliated with or endorsed by Microsoft. Power Apps and Visual Studio Code are trademarks of Microsoft. The extension's interface is in French.
 
-## How it works
+![VS Code with the Application view, the control inspector, a formula and the screen preview](https://raw.githubusercontent.com/vDAKK/powerapps-vscode-bridge/main/assets/screenshots/vscode.png)
 
-```
-Power Apps Studio (browser)  ⇄  companion browser extension  ⇄  ws://127.0.0.1  ⇄  this VS Code extension
-```
+## What you get
 
-- Select a control in Studio: its formula opens in VS Code as a `powerfx:/Control/Control.Property.fx` file.
-- Type in VS Code: the formula is written into Studio's formula bar, keeping Studio's undo history.
-- Type in Studio: the open VS Code document updates.
-- Formula errors reported by Studio appear in the VS Code **Problems** panel.
+- **Live editing.** Select a control in Studio and its formula opens in VS Code. Every keystroke is written into Studio's formula bar (Studio's undo history is kept), and edits made in Studio show up in VS Code.
+- **Application view.** Every screen and control of the app, with an instant filter, one icon per control type, errors in red and default names (Label3…) in italics. It follows the selection in Studio.
+- **Control view.** An inspector for the selected control: where it sits (clickable path), actions (preview, references, rename) and its properties grouped by category, each with a preview of its formula. Show only the modified properties, or all of them.
+- **Breadcrumb** above each formula: `Screen › Container › Control · Property`, every part clickable.
+- **Screen preview.** A live copy of the Studio screen: click an element to open its formula, search for a control, switch screens.
+- **Power Fx language support.** Highlighting, completion, signature help, hovers, formatting (`Shift+Alt+F`), `Ctrl+click` a control name to select it in Studio.
+- **Code quality.** Studio's formula errors in the Problems panel (and as a badge on the side bar icon), search across all formulas, references of a control, rename through Studio (references updated), clean-up analysis of unused variables, collections and controls.
+- **Real files.** The whole app is exported to a `.powerapps/` folder (one file per formula, plus `_app.json` and `_state.json`). Tools that work on files, such as an AI assistant, can read and edit the app: saving a file sends it to Studio.
 
-## Requirements
+## Getting started
 
-1. This extension.
-2. The **Power Apps X VS Code** browser extension (Chrome, Edge or Firefox), which reads and writes Studio's formula bar.
-3. A canvas app open in Power Apps Studio.
+1. Install this extension.
+2. Install the **Power Apps X VS Code** browser extension (Firefox, Chrome or Edge). Builds are attached to each [GitHub release](https://github.com/vDAKK/powerapps-vscode-bridge/releases).
+3. Open a canvas app in edit mode in [Power Apps Studio](https://make.powerapps.com/), with the Tree view panel visible.
+4. On the first connection, VS Code asks you to **approve the browser extension**: accept.
 
-When both are running, the status bar shows the selected control. If it shows a disconnected plug, open the browser extension popup and click **Reconnect**.
+The status bar then shows the selected control. A walkthrough opens on first install (*Help: Get Started*).
 
-## Features
+## Shortcuts
 
-- **Screen preview**: the current Studio screen with one clickable box per control. Click a control to select it in Studio and open its formula, search controls by name, switch screens. It is a live copy of the screen (rendered from the HTML of Studio's canvas, no screenshot, no extra permission) that follows your edits. Controls with formula errors are outlined in red.
-- **Getting started walkthrough** (opens on first install, or *Help: Get Started*) and a help menu on the status bar item.
-- **Ctrl+click** a control name in a formula to select it in Studio, or `Control.Property` to open that formula.
-- **Power Apps sidebar** with the app tree (screens and controls) and the properties of the selected control, with error icons.
-- **Go to formula** (`Ctrl+Alt+G`): jump to any `Control.Property`.
-- **Go to property** (`Ctrl+Alt+P`): switch property of the current control.
-- **Power Fx syntax highlighting** and completion of Power Fx functions and of control properties (after `Control.`).
-- **Follow selection**: the editor follows what you select in Studio (toggle from the command palette).
-- **Disk mirror** (optional): a read-only copy of the formulas and of Studio errors in a folder, for tools that only read real files.
+| Shortcut | Action |
+|---|---|
+| `Ctrl+Alt+F` | Search for a control |
+| `Ctrl+Alt+P` | Switch property of the current control |
+| `Ctrl+Alt+G` | Go to `Control.Property` |
+| `Ctrl+Alt+Shift+F` | Search all formulas |
+| `/` | Filter, in the Application and Control views |
+| `F2` | Rename the control, in the Application view |
+
+All commands are in the command palette under **Power Apps**.
 
 ## Settings
 
@@ -43,19 +47,17 @@ When both are running, the status bar shows the selected control. If it shows a 
 | `powerappsBridge.followSelection` | `true` | Open the formula selected in Studio automatically. |
 | `powerappsBridge.navigateOnEdit` | `true` | When you edit a formula that Studio is not showing, switch Studio to it before writing. |
 | `powerappsBridge.singleTab` | `true` | Keep one formula tab open; pinned tabs are kept. |
-| `powerappsBridge.mirrorFolder` | empty | Folder for the read-only disk mirror (relative to the workspace). Writes `<Control>/<Control>.<Property>.fx` and `_state.json`. Empty disables it. |
-
-## Commands
-
-All commands are in the command palette under **Power Apps X VS Code**: restart server, show log, toggle follow selection, go to formula, go to property, go to control, refresh tree, load properties.
+| `powerappsBridge.mirrorFolder` | `.powerapps` | Workspace folder with the app as real files. Empty disables it. |
+| `powerappsBridge.exportOnConnect` | `true` | Read every formula of the app into that folder when Studio connects. |
+| `powerappsBridge.syncFromDisk` | `true` | Send a `.fx` file of that folder to Studio when it is saved. Off makes the folder a read-only copy. |
+| `powerappsBridge.lint` | `true` | Report unused variables, collections, named formulas and hidden controls in the Problems panel. |
 
 ## Privacy and security
 
-- The WebSocket server listens on `127.0.0.1` only and accepts connections from browser extensions only (`chrome-extension://`, `moz-extension://` origins).
-- No data leaves your machine: formulas travel between your browser and VS Code locally. No telemetry.
-
-See the [privacy policy](https://github.com/vDAKK/powerapps-vscode-bridge/blob/main/PRIVACY.md).
+- The WebSocket server listens on `127.0.0.1` only and accepts browser extensions only (`chrome-extension://`, `moz-extension://` origins), never web pages.
+- Each browser extension must be approved once in VS Code, so another extension installed in your browser cannot read or change your formulas. The command *Power Apps : Oublier les extensions navigateur autorisées* (forget approved browser extensions) revokes the approvals.
+- No data leaves your computer: formulas travel between your browser and VS Code locally. No telemetry. See the [privacy policy](https://github.com/vDAKK/powerapps-vscode-bridge/blob/main/PRIVACY.md).
 
 ## Limitations
 
-Power Apps Studio's interface is not a public API. A Studio update can break detection of the formula bar or of the selected control until the browser extension is updated. Report issues on [GitHub](https://github.com/vDAKK/powerapps-vscode-bridge/issues).
+Power Apps Studio's interface is not a public API. A Studio update can break the detection of the formula bar or of the selected control until the browser extension is updated. Report issues on [GitHub](https://github.com/vDAKK/powerapps-vscode-bridge/issues).
