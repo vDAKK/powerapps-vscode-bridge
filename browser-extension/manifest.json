@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Power Apps X VS Code",
-  "version": "0.6.2",
-  "description": "Live two-way sync between the Power Apps Studio formula bar and VS Code. Unofficial, not affiliated with Microsoft.",
+  "name": "__MSG_extName__",
+  "version": "0.7.0",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -25,7 +26,7 @@
     ]
   },
   "action": {
-    "default_title": "Power Apps X VS Code",
+    "default_title": "__MSG_actionTitle__",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon-16.png",

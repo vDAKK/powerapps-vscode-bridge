@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Bienvenue · Power Apps X VS Code</title>
+    <title data-i18n="welcomeTitle">Welcome · Power Apps X VS Code</title>
     <link rel="icon" href="icons/icon-32.png" />
     <style>
       :root {
@@ -101,52 +101,53 @@
       <header>
         <img src="icons/icon-128.png" alt="" />
         <div>
-          <h1>Power Apps X VS Code est installé</h1>
-          <p>Encore une étape côté VS Code, et c’est prêt.</p>
+          <h1 data-i18n="welcomeHeading">Power Apps X VS Code is installed</h1>
+          <p data-i18n="welcomeSubheading">One more step in VS Code and you’re all set.</p>
         </div>
       </header>
 
       <p class="lead">
-        Cette extension relie la barre de formule de Power Apps Studio à VS Code. Elle a besoin de sa
-        jumelle, l’extension <b>Power Apps X VS Code pour VS Code</b>, installée sur le même ordinateur.
+        <span data-i18n="welcomeLeadBefore">This extension connects the Power Apps Studio formula bar to VS Code. It needs its companion extension</span>
+        <b data-i18n="welcomeLeadCompanion">Power Apps X VS Code for VS Code</b><span data-i18n="welcomeLeadAfter">, installed on the same computer.</span>
       </p>
 
       <ol>
         <li class="key">
           <div>
-            <h2>Installe l’extension VS Code</h2>
-            <p>Depuis VS Code (vue Extensions, recherche « Power Apps X VS Code ») ou depuis le Marketplace.</p>
+            <h2 data-i18n="welcomeStep1Title">Install the VS Code extension</h2>
+            <p data-i18n="welcomeStep1Text">From VS Code (Extensions view, search for “Power Apps X VS Code”) or from the Marketplace.</p>
             <div class="actions">
-              <a class="btn primary" href="vscode:extension/WavyPanda.powerapps-bridge">Ouvrir dans VS Code</a>
-              <a class="btn" href="https://marketplace.visualstudio.com/items?itemName=WavyPanda.powerapps-bridge" target="_blank" rel="noopener">Voir sur le Marketplace</a>
+              <a class="btn primary" href="vscode:extension/WavyPanda.powerapps-bridge" data-i18n="welcomeOpenInVsCode">Open in VS Code</a>
+              <a class="btn" href="https://marketplace.visualstudio.com/items?itemName=WavyPanda.powerapps-bridge" target="_blank" rel="noopener" data-i18n="welcomeViewMarketplace">View on the Marketplace</a>
             </div>
           </div>
         </li>
         <li>
           <div>
-            <h2>Ouvre ton app dans Power Apps Studio</h2>
-            <p>Une canvas app en modification, avec le panneau Arborescence visible.</p>
+            <h2 data-i18n="welcomeStep2Title">Open your app in Power Apps Studio</h2>
+            <p data-i18n="welcomeStep2Text">A canvas app open for editing, with the Tree view pane visible.</p>
             <div class="actions">
-              <a class="btn" href="https://make.powerapps.com/" target="_blank" rel="noopener">Ouvrir Power Apps</a>
+              <a class="btn" href="https://make.powerapps.com/" target="_blank" rel="noopener" data-i18n="openPowerApps">Open Power Apps</a>
             </div>
           </div>
         </li>
         <li>
           <div>
-            <h2>Accepte l’autorisation dans VS Code</h2>
+            <h2 data-i18n="welcomeStep3Title">Accept the permission prompt in VS Code</h2>
             <p>
-              À la première connexion, VS Code demande s’il peut faire confiance à ce navigateur : réponds
-              <b>Autoriser</b>. Sélectionne ensuite un contrôle dans Studio : sa formule s’ouvre dans VS Code.
+              <span data-i18n="welcomeStep3Before">On first connection, VS Code asks whether it can trust this browser: answer</span>
+              <b data-i18n="welcomeStep3Allow">Allow</b><span data-i18n="welcomeStep3After">. Then select a control in Studio: its formula opens in VS Code.</span>
             </p>
           </div>
         </li>
       </ol>
 
       <footer>
-        L’état de la connexion est visible à tout moment dans le menu de l’extension (icône dans la barre d’outils).
-        Tout reste sur ton ordinateur : l’extension ne communique qu’avec VS Code, sur <code>127.0.0.1</code>.
-        · <a href="https://github.com/vDAKK/powerapps-vscode-bridge#readme" target="_blank" rel="noopener">Aide</a>
+        <span data-i18n="welcomeFooterBefore">The connection status is visible at any time in the extension’s menu (its icon in the toolbar). Everything stays on your computer: the extension only talks to VS Code, on</span>
+        <code>127.0.0.1</code>.
+        · <a href="https://github.com/vDAKK/powerapps-vscode-bridge#readme" target="_blank" rel="noopener" data-i18n="help">Help</a>
       </footer>
     </main>
+    <script src="welcome.js"></script>
   </body>
 </html>

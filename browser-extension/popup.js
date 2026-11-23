@@ -1,6 +1,19 @@
 const $ = (id) => document.getElementById(id);
+const t = (key, ...subs) => chrome.i18n.getMessage(key, subs.map(String));
 
-const MODES = { monaco: 'éditeur', textarea: 'texte' };
+// Static texts: data-i18n (text content) and data-i18n-<attribute> (title, aria-label, placeholder).
+document.documentElement.lang = chrome.i18n.getUILanguage();
+for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
+for (const attr of ['title', 'aria-label', 'placeholder']) {
+  for (const el of document.querySelectorAll(`[data-i18n-${attr}]`)) el.setAttribute(attr, t(el.getAttribute(`data-i18n-${attr}`)));
+}
+
+const MODES = { monaco: t('popupModeEditor'), textarea: t('popupModeText') };
+const STATES = {
+  connected: t('popupStateConnected'),
+  connecting: t('popupStateConnecting'),
+  disconnected: t('popupStateDisconnected'),
+};
 
 async function refresh() {
   let s;
@@ -10,14 +23,10 @@ async function refresh() {
     s = { state: 'disconnected', port: '?', frames: 0 };
   }
   $('status').dataset.state = s.state;
-  $('state').textContent =
-    { connected: 'Connecté à VS Code', connecting: 'Connexion à VS Code…', disconnected: 'Déconnecté de VS Code' }[s.state] ||
-    s.state;
+  $('state').textContent = STATES[s.state] || s.state;
   $('sub').textContent = !s.frames
-    ? 'Aucun onglet Power Apps Studio détecté'
-    : s.state === 'connected'
-      ? `Studio relié · port ${s.port}`
-      : `Studio détecté · port ${s.port}`;
+    ? t('popupSubNoStudio')
+    : t(s.state === 'connected' ? 'popupSubLinked' : 'popupSubDetected', s.port);
 
   const info = s.lastInfo;
   $('selection').hidden = !info || !info.control;
@@ -36,19 +45,15 @@ async function refresh() {
   let hint = '';
   const actions = [];
   if (!s.frames) {
-    hint = needsVs
-      ? 'Cette extension fonctionne avec l’extension « Power Apps X VS Code » pour VS Code : installe-la, puis ouvre une canvas app en modification dans Power Apps Studio.'
-      : 'Ouvre une canvas app en modification dans Power Apps Studio.';
+    hint = needsVs ? t('popupHintInstallAndOpen') : t('popupHintOpenApp');
     if (needsVs) actions.push('installVs');
     actions.push('openStudio');
   } else if (s.state !== 'connected') {
-    hint = needsVs
-      ? `VS Code ne répond pas. Installe l’extension « Power Apps X VS Code » dans VS Code et garde VS Code ouvert. À la première connexion, VS Code demande d’autoriser ce navigateur : accepte.`
-      : `VS Code ne répond pas sur le port ${s.port}. Vérifie que VS Code est ouvert avec l’extension « Power Apps X VS Code » et le même port. Si VS Code demande d’autoriser ce navigateur, accepte.`;
+    hint = needsVs ? t('popupHintNoResponseInstall') : t('popupHintNoResponsePort', s.port);
     if (needsVs) actions.push('installVs');
     actions.push('reconnectMain');
   } else if (!info) {
-    hint = 'Sélectionne un contrôle dans Studio : sa formule s’ouvre dans VS Code.';
+    hint = t('popupHintSelectControl');
   }
   $('hint').textContent = hint;
   for (const id of ['installVs', 'openStudio', 'reconnectMain']) {
@@ -73,10 +78,10 @@ async function savePort() {
   if (!input.reportValidity()) return;
   await chrome.storage.local.set({ port: Number(input.value) || 8765 });
   const b = $('save');
-  b.textContent = 'Enregistré ✓';
+  b.textContent = t('popupSaved');
   b.classList.add('done');
   setTimeout(() => {
-    b.textContent = 'Enregistrer';
+    b.textContent = t('popupSave');
     b.classList.remove('done');
   }, 1500);
 }
@@ -94,7 +99,7 @@ $('installVs').onclick = () => chrome.tabs.create({ url: chrome.runtime.getURL('
 $('diag').onclick = async () => {
   const out = $('out');
   out.hidden = false;
-  out.value = 'Analyse…';
+  out.value = t('popupAnalyzing');
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     const results = await chrome.scripting.executeScript({
@@ -109,12 +114,12 @@ $('diag').onclick = async () => {
     );
     $('copy').hidden = false;
   } catch (e) {
-    out.value = `Erreur : ${e.message}`;
+    out.value = t('popupError', e.message);
   }
 };
 
 $('copy').onclick = async () => {
   await navigator.clipboard.writeText($('out').value);
-  $('copy').textContent = 'Copié ✓';
-  setTimeout(() => ($('copy').textContent = 'Copier le résultat'), 1500);
+  $('copy').textContent = t('popupCopied');
+  setTimeout(() => ($('copy').textContent = t('popupCopyResult')), 1500);
 };

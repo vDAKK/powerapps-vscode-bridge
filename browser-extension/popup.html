@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Power Apps X VS Code</title>
+    <title data-i18n="extName">Power Apps X VS Code</title>
     <style>
       :root {
         --brand: #4c3bcf;
@@ -232,7 +232,7 @@
   <body>
     <header>
       <img src="icons/icon-32.png" alt="" />
-      <span class="title">Power Apps X VS Code</span>
+      <span class="title" data-i18n="extName">Power Apps X VS Code</span>
       <span class="version" id="version"></span>
     </header>
 
@@ -246,7 +246,7 @@
       </section>
 
       <section class="card" id="selection" hidden>
-        <div class="k">Formule active</div>
+        <div class="k" data-i18n="popupActiveFormula">Active formula</div>
         <div class="formula">
           <span class="ctrl" id="ctrl"></span><span class="prop" id="prop"></span>
           <span class="chip" id="mode"></span>
@@ -256,39 +256,39 @@
       <section class="next">
         <p id="hint"></p>
         <div class="inline">
-          <button class="primary" id="installVs" hidden>Installer l’extension VS Code</button>
-          <button class="primary" id="openStudio" hidden>Ouvrir Power Apps</button>
-          <button class="primary" id="reconnectMain" hidden>Reconnecter</button>
+          <button class="primary" id="installVs" hidden data-i18n="popupInstallVs">Install the VS Code extension</button>
+          <button class="primary" id="openStudio" hidden data-i18n="openPowerApps">Open Power Apps</button>
+          <button class="primary" id="reconnectMain" hidden data-i18n="reconnect">Reconnect</button>
         </div>
       </section>
     </main>
 
     <details id="settings">
-      <summary>Réglages et dépannage</summary>
+      <summary data-i18n="popupSettings">Settings and troubleshooting</summary>
       <div class="panel">
         <div class="field">
-          <label for="port">Port de VS Code</label>
+          <label for="port" data-i18n="popupPortLabel">VS Code port</label>
           <div class="inline">
             <input id="port" type="number" min="1" max="65535" required />
-            <button id="save">Enregistrer</button>
-            <button id="reconnect">Reconnecter</button>
+            <button id="save" data-i18n="popupSave">Save</button>
+            <button id="reconnect" data-i18n="reconnect">Reconnect</button>
           </div>
-          <div class="help">Doit être identique au réglage <code>powerappsBridge.port</code> de VS Code (8765 par défaut).</div>
+          <div class="help"><span data-i18n="popupPortHelpBefore">Must match the</span> <code>powerappsBridge.port</code> <span data-i18n="popupPortHelpAfter">setting in VS Code (default 8765).</span></div>
         </div>
         <div class="field">
-          <label>Diagnostic</label>
+          <label data-i18n="popupDiagnosticLabel">Diagnostics</label>
           <div class="inline">
-            <button id="diag">Analyser la page</button>
-            <button id="copy" hidden>Copier le résultat</button>
+            <button id="diag" data-i18n="popupAnalyze">Analyze page</button>
+            <button id="copy" hidden data-i18n="popupCopyResult">Copy result</button>
           </div>
-          <textarea id="out" hidden readonly aria-label="Résultat du diagnostic"></textarea>
+          <textarea id="out" hidden readonly aria-label="Diagnostic result" data-i18n-aria-label="popupDiagnosticResultAria"></textarea>
         </div>
       </div>
     </details>
 
     <footer>
-      <span>Extension non officielle</span>
-      <a href="https://github.com/vDAKK/powerapps-vscode-bridge#readme" target="_blank" rel="noopener">Aide</a>
+      <span data-i18n="popupUnofficial">Unofficial extension</span>
+      <a href="https://github.com/vDAKK/powerapps-vscode-bridge#readme" target="_blank" rel="noopener" data-i18n="help">Help</a>
     </footer>
     <script src="popup.js"></script>
   </body>

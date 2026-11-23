@@ -1,0 +1,234 @@
+{
+  "extName": {
+    "message": "Power Apps X VS Code",
+    "description": "Product name (manifest name, popup header, page titles). Do not translate."
+  },
+  "extDescription": {
+    "message": "Synchro bidirectionnelle en direct entre la barre de formule Power Apps Studio et VS Code. Non officielle, non affiliée à Microsoft.",
+    "description": "Manifest description shown in the browser's extension list and store. Max 132 characters."
+  },
+  "actionTitle": {
+    "message": "Power Apps X VS Code",
+    "description": "Tooltip of the toolbar button."
+  },
+  "openPowerApps": {
+    "message": "Ouvrir Power Apps",
+    "description": "Button/link that opens make.powerapps.com (popup and welcome page)."
+  },
+  "help": {
+    "message": "Aide",
+    "description": "Footer link to the README (popup and welcome page)."
+  },
+  "reconnect": {
+    "message": "Reconnecter",
+    "description": "Button that retries the connection to VS Code."
+  },
+  "popupStateConnected": {
+    "message": "Connecté à VS Code",
+    "description": "Popup status line when the WebSocket to VS Code is open."
+  },
+  "popupStateConnecting": {
+    "message": "Connexion à VS Code…",
+    "description": "Popup status line while connecting to VS Code."
+  },
+  "popupStateDisconnected": {
+    "message": "Déconnecté de VS Code",
+    "description": "Popup status line when VS Code is not reachable."
+  },
+  "popupSubNoStudio": {
+    "message": "Aucun onglet Power Apps Studio détecté",
+    "description": "Popup status detail when no Studio tab is open."
+  },
+  "popupSubLinked": {
+    "message": "Studio relié · port $PORT$",
+    "description": "Popup status detail when Studio is open and connected to VS Code.",
+    "placeholders": {
+      "port": {
+        "content": "$1",
+        "example": "8765"
+      }
+    }
+  },
+  "popupSubDetected": {
+    "message": "Studio détecté · port $PORT$",
+    "description": "Popup status detail when Studio is open but not connected to VS Code.",
+    "placeholders": {
+      "port": {
+        "content": "$1",
+        "example": "8765"
+      }
+    }
+  },
+  "popupActiveFormula": {
+    "message": "Formule active",
+    "description": "Heading of the card showing the control and property currently being edited."
+  },
+  "popupModeEditor": {
+    "message": "éditeur",
+    "description": "Chip: Studio's formula bar is the rich (Monaco) editor."
+  },
+  "popupModeText": {
+    "message": "texte",
+    "description": "Chip: Studio's formula bar is a plain text area."
+  },
+  "popupHintInstallAndOpen": {
+    "message": "Cette extension fonctionne avec l’extension « Power Apps X VS Code » pour VS Code : installe-la, puis ouvre une canvas app en modification dans Power Apps Studio.",
+    "description": "Popup hint when no Studio tab is open and VS Code has never answered."
+  },
+  "popupHintOpenApp": {
+    "message": "Ouvre une canvas app en modification dans Power Apps Studio.",
+    "description": "Popup hint when no Studio tab is open."
+  },
+  "popupHintNoResponseInstall": {
+    "message": "VS Code ne répond pas. Installe l’extension « Power Apps X VS Code » dans VS Code et garde VS Code ouvert. À la première connexion, VS Code demande d’autoriser ce navigateur : accepte.",
+    "description": "Popup hint when Studio is open, VS Code is not reachable and has never answered."
+  },
+  "popupHintNoResponsePort": {
+    "message": "VS Code ne répond pas sur le port $PORT$. Vérifie que VS Code est ouvert avec l’extension « Power Apps X VS Code » et le même port. Si VS Code demande d’autoriser ce navigateur, accepte.",
+    "description": "Popup hint when Studio is open and VS Code, which answered before, is not reachable.",
+    "placeholders": {
+      "port": {
+        "content": "$1",
+        "example": "8765"
+      }
+    }
+  },
+  "popupHintSelectControl": {
+    "message": "Sélectionne un contrôle dans Studio : sa formule s’ouvre dans VS Code.",
+    "description": "Popup hint when connected but no control is selected."
+  },
+  "popupInstallVs": {
+    "message": "Installer l’extension VS Code",
+    "description": "Popup button that opens the welcome page."
+  },
+  "popupSettings": {
+    "message": "Réglages et dépannage",
+    "description": "Popup collapsible section title."
+  },
+  "popupPortLabel": {
+    "message": "Port de VS Code",
+    "description": "Label of the port number field."
+  },
+  "popupSave": {
+    "message": "Enregistrer",
+    "description": "Button that saves the port."
+  },
+  "popupSaved": {
+    "message": "Enregistré ✓",
+    "description": "Save button text shown briefly after saving."
+  },
+  "popupPortHelpBefore": {
+    "message": "Doit être identique au réglage",
+    "description": "Port help, text before the setting name powerappsBridge.port (a space is added after it)."
+  },
+  "popupPortHelpAfter": {
+    "message": "de VS Code (8765 par défaut).",
+    "description": "Port help, text after the setting name powerappsBridge.port (a space is added before it)."
+  },
+  "popupDiagnosticLabel": {
+    "message": "Diagnostic",
+    "description": "Label of the diagnostics field."
+  },
+  "popupAnalyze": {
+    "message": "Analyser la page",
+    "description": "Button that runs the diagnostic on the active tab."
+  },
+  "popupCopyResult": {
+    "message": "Copier le résultat",
+    "description": "Button that copies the diagnostic output."
+  },
+  "popupCopied": {
+    "message": "Copié ✓",
+    "description": "Copy button text shown briefly after copying."
+  },
+  "popupDiagnosticResultAria": {
+    "message": "Résultat du diagnostic",
+    "description": "Accessible name of the diagnostic output text area."
+  },
+  "popupAnalyzing": {
+    "message": "Analyse…",
+    "description": "Shown in the diagnostic output while the analysis runs."
+  },
+  "popupError": {
+    "message": "Erreur : $MESSAGE$",
+    "description": "Diagnostic output when the analysis fails.",
+    "placeholders": {
+      "message": {
+        "content": "$1",
+        "example": "Cannot access contents of the page"
+      }
+    }
+  },
+  "popupUnofficial": {
+    "message": "Extension non officielle",
+    "description": "Popup footer disclaimer."
+  },
+  "welcomeTitle": {
+    "message": "Bienvenue · Power Apps X VS Code",
+    "description": "Browser tab title of the welcome page."
+  },
+  "welcomeHeading": {
+    "message": "Power Apps X VS Code est installé",
+    "description": "Welcome page main heading."
+  },
+  "welcomeSubheading": {
+    "message": "Encore une étape côté VS Code, et c’est prêt.",
+    "description": "Welcome page line under the heading."
+  },
+  "welcomeLeadBefore": {
+    "message": "Cette extension relie la barre de formule de Power Apps Studio à VS Code. Elle a besoin de sa jumelle, l’extension",
+    "description": "Welcome intro, text before the bold companion extension name (a space is added after it)."
+  },
+  "welcomeLeadCompanion": {
+    "message": "Power Apps X VS Code pour VS Code",
+    "description": "Welcome intro, bold name of the VS Code extension."
+  },
+  "welcomeLeadAfter": {
+    "message": ", installée sur le même ordinateur.",
+    "description": "Welcome intro, text right after the bold companion extension name (no space before it)."
+  },
+  "welcomeStep1Title": {
+    "message": "Installe l’extension VS Code",
+    "description": "Welcome step 1 title."
+  },
+  "welcomeStep1Text": {
+    "message": "Depuis VS Code (vue Extensions, recherche « Power Apps X VS Code ») ou depuis le Marketplace.",
+    "description": "Welcome step 1 text."
+  },
+  "welcomeOpenInVsCode": {
+    "message": "Ouvrir dans VS Code",
+    "description": "Welcome step 1 button (vscode: link)."
+  },
+  "welcomeViewMarketplace": {
+    "message": "Voir sur le Marketplace",
+    "description": "Welcome step 1 button (Visual Studio Marketplace link)."
+  },
+  "welcomeStep2Title": {
+    "message": "Ouvre ton app dans Power Apps Studio",
+    "description": "Welcome step 2 title."
+  },
+  "welcomeStep2Text": {
+    "message": "Une canvas app en modification, avec le panneau Arborescence visible.",
+    "description": "Welcome step 2 text."
+  },
+  "welcomeStep3Title": {
+    "message": "Accepte l’autorisation dans VS Code",
+    "description": "Welcome step 3 title."
+  },
+  "welcomeStep3Before": {
+    "message": "À la première connexion, VS Code demande s’il peut faire confiance à ce navigateur : réponds",
+    "description": "Welcome step 3, text before the bold button name (a space is added after it)."
+  },
+  "welcomeStep3Allow": {
+    "message": "Autoriser",
+    "description": "Welcome step 3, bold label of the VS Code prompt button to click."
+  },
+  "welcomeStep3After": {
+    "message": ". Sélectionne ensuite un contrôle dans Studio : sa formule s’ouvre dans VS Code.",
+    "description": "Welcome step 3, text right after the bold button name (no space before it)."
+  },
+  "welcomeFooterBefore": {
+    "message": "L’état de la connexion est visible à tout moment dans le menu de l’extension (icône dans la barre d’outils). Tout reste sur ton ordinateur : l’extension ne communique qu’avec VS Code, sur",
+    "description": "Welcome footer, text before the address 127.0.0.1 (a space is added after it, a period after the address)."
+  }
+}
