@@ -626,6 +626,40 @@ async function onDiskFormula(file) {
   pushFormula(uri, m, text);
 }
 
+let extContext = null; // set in activate()
+const TRUSTED_KEY = 'trustedOrigins';
+const trustedOrigins = () => new Set((extContext && extContext.globalState.get(TRUSTED_KEY)) || []);
+const asking = new Map(); // origin -> Promise<boolean> (one prompt per origin, even if it reconnects)
+const refusedOrigins = new Set(); // this session only: the browser keeps reconnecting, don't ask again
+
+/**
+ * Any installed browser extension can open a WebSocket to 127.0.0.1, so the Origin check alone would let
+ * another extension read and change formulas. The first connection of each extension is held until the user
+ * approves it; the answer is remembered.
+ */
+function approveOrigin(origin) {
+  if (trustedOrigins().has(origin)) return Promise.resolve(true);
+  if (refusedOrigins.has(origin)) return Promise.resolve(false);
+  if (asking.has(origin)) return asking.get(origin);
+  const p = (async () => {
+    const id = origin.replace(/^[a-z-]+:\/\//, '').replace(/\/$/, '');
+    const pick = await vscode.window.showWarningMessage(
+      `Power Apps X VS Code : une extension navigateur demande à se connecter (${id}). ` +
+        'Elle pourra lire et modifier les formules de l’app ouverte dans Studio. Autoriser seulement si c’est l’extension « Power Apps X VS Code ».',
+      { modal: false },
+      'Autoriser',
+      'Refuser'
+    );
+    const ok = pick === 'Autoriser';
+    if (ok) await extContext.globalState.update(TRUSTED_KEY, [...trustedOrigins(), origin]);
+    else refusedOrigins.add(origin);
+    log(`${ok ? 'Approved' : 'Refused'} browser extension ${origin}`);
+    return ok;
+  })().finally(() => asking.delete(origin));
+  asking.set(origin, p);
+  return p;
+}
+
 function isAllowedOrigin(origin) {
   // Only browser extensions may connect: web pages cannot forge the Origin header.
   return typeof origin === 'string' && /^(chrome-extension|moz-extension):\/\//.test(origin);
@@ -637,6 +671,7 @@ function startServer() {
   server = new WebSocketServer({
     host: '127.0.0.1',
     port,
+    maxPayload: 64 * 1024 * 1024, // a screen mirror with inlined images fits; anything bigger is refused
     verifyClient: (info) => {
       const ok = isAllowedOrigin(info.origin);
       if (!ok) log(`Rejected connection from origin "${info.origin}"`);
@@ -652,11 +687,36 @@ function startServer() {
     for (const c of openClients()) c.send('{"type":"heartbeat"}');
   }, 10000);
   server.on('close', () => clearInterval(heartbeat));
-  server.on('error', (err) => {
+  server.on('error', async (err) => {
     log(`Server error: ${err.message}`);
-    vscode.window.showErrorMessage(`Power Apps X VS Code: cannot listen on port ${port} (${err.message})`);
+    server = null;
+    updateStatus();
+    const inUse = err.code === 'EADDRINUSE';
+    const pick = await vscode.window.showErrorMessage(
+      inUse
+        ? `Power Apps X VS Code : le port ${port} est déjà utilisé, probablement par une autre fenêtre VS Code. Studio reste relié à cette autre fenêtre.`
+        : `Power Apps X VS Code : impossible d’écouter sur le port ${port} (${err.message}).`,
+      'Réessayer',
+      'Changer de port',
+      'Journal'
+    );
+    if (pick === 'Réessayer') startServer();
+    else if (pick === 'Changer de port') vscode.commands.executeCommand('workbench.action.openSettings', 'powerappsBridge.port');
+    else if (pick === 'Journal') output.show(true);
   });
-  server.on('connection', (ws) => {
+  server.on('connection', async (ws, req) => {
+    const origin = req.headers.origin;
+    const known = trustedOrigins().has(origin);
+    if (!(await approveOrigin(origin))) {
+      ws.close(1008, 'Not approved in VS Code');
+      return;
+    }
+    // Messages sent while the user was deciding (hello, selection) were not listened to: the browser
+    // extension reconnects within a second and starts over, now trusted.
+    if (!known) {
+      ws.close(1012, 'Approved, reconnect');
+      return;
+    }
     clients.add(ws);
     log('Browser extension connected');
     updateStatus();
@@ -1956,6 +2016,7 @@ const signatureProvider = {
 
 function activate(context) {
   extensionId = context.extension.id;
+  extContext = context;
   output = vscode.window.createOutputChannel('Power Apps X VS Code');
   statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   propertyItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
@@ -2005,6 +2066,12 @@ function activate(context) {
     vscode.workspace.onDidChangeTextDocument(onLocalChange),
     vscode.commands.registerCommand('powerappsBridge.restart', startServer),
     vscode.commands.registerCommand('powerappsBridge.showLog', () => output.show(true)),
+    vscode.commands.registerCommand('powerappsBridge.forgetBrowsers', async () => {
+      await context.globalState.update(TRUSTED_KEY, []);
+      refusedOrigins.clear();
+      vscode.window.showInformationMessage('Power Apps X VS Code : les extensions navigateur autorisées ont été oubliées. La prochaine connexion redemandera l’autorisation.');
+      startServer(); // drops current connections
+    }),
     vscode.commands.registerCommand('powerappsBridge.toggleFollow', async () => {
       const next = !config().get('followSelection', true);
       await config().update('followSelection', next, vscode.ConfigurationTarget.Global);

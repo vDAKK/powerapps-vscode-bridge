@@ -165,6 +165,10 @@
         "command": "powerappsBridge.runLint",
         "title": "Power Apps X VS Code: Analyse de nettoyage (variables, collections, contrôles inutilisés)",
         "icon": "$(lightbulb)"
+      },
+      {
+        "command": "powerappsBridge.forgetBrowsers",
+        "title": "Power Apps X VS Code: Oublier les extensions navigateur autorisées"
       }
     ],
     "configuration": {
