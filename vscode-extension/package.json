@@ -2,7 +2,7 @@
   "name": "powerapps-bridge",
   "displayName": "Power Apps X VS Code",
   "description": "Live two-way sync between the Power Apps Studio formula bar (browser) and VS Code. Unofficial, not affiliated with Microsoft.",
-  "publisher": "local",
+  "publisher": "WavyPanda",
   "version": "0.6.0",
   "license": "MIT",
   "icon": "media/icon.png",

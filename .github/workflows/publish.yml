@@ -1,0 +1,118 @@
+# Publishes the VS Code extension to the Visual Studio Marketplace with Trusted Publishing (OIDC, no token
+# stored in the repository), and attaches both packages to a GitHub release.
+#
+# Release: bump "version" in vscode-extension/package.json and browser-extension/manifest.json, commit, then
+#   git tag v0.7.0 && git push origin v0.7.0
+#
+# Marketplace side (publisher WavyPanda > Trusted Publishing): owner "vDAKK", repository
+# "powerapps-vscode-bridge", workflow "publish.yml", environment "marketplace".
+
+name: Publish
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Build and check only, do not publish'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build packages
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vscode-extension/package-lock.json
+
+      - name: Check versions
+        id: version
+        run: |
+          vs=$(node -p "require('./vscode-extension/package.json').version")
+          br=$(node -p "require('./browser-extension/manifest.json').version")
+          echo "VS Code: $vs, browser: $br"
+          if [ "$vs" != "$br" ]; then
+            echo "::error::Versions differ: vscode-extension/package.json $vs, browser-extension/manifest.json $br"
+            exit 1
+          fi
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v$vs" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match version $vs (expected v$vs)"
+            exit 1
+          fi
+          echo "version=$vs" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        run: npm ci --omit=dev
+        working-directory: vscode-extension
+
+      - name: Syntax check
+        run: |
+          for f in vscode-extension/*.js browser-extension/*.js; do node --check "$f"; done
+
+      - name: Package
+        run: node scripts/package.mjs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: dist/*
+          if-no-files-found: error
+
+  publish-marketplace:
+    name: Visual Studio Marketplace
+    needs: build
+    if: github.event_name == 'push' || !inputs.dry-run
+    runs-on: ubuntu-latest
+    environment: marketplace
+    permissions:
+      id-token: write # OIDC token exchanged for a short-lived Marketplace token
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: dist
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Publish
+        run: npx --yes @vscode/vsce@^4 publish --oidc --packagePath "dist/powerapps-bridge-${{ needs.build.outputs.version }}.vsix"
+
+  github-release:
+    name: GitHub release
+    needs: [build, publish-marketplace]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: dist
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes
