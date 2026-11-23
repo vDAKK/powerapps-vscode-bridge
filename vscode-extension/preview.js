@@ -154,18 +154,41 @@ class ScreenPreview {
 <meta http-equiv="Content-Security-Policy" content="${csp}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  body { --sel: var(--vscode-focusBorder); --err: var(--vscode-errorForeground); --match: var(--vscode-editorWarning-foreground, #cca700); }
+  body {
+    --sel: var(--vscode-focusBorder); --err: var(--vscode-errorForeground); --match: var(--vscode-editorWarning-foreground, #cca700);
+    --line: var(--vscode-panel-border, var(--vscode-widget-border, #8883));
+    --muted: var(--vscode-descriptionForeground);
+  }
   html, body { height: 100%; margin: 0; }
   body { display: flex; flex-direction: column; font: var(--vscode-font-size) var(--vscode-font-family); color: var(--vscode-foreground); background: var(--vscode-editor-background); }
-  .bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--vscode-panel-border, transparent); }
-  .bar select, .bar input { background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border, transparent); padding: 3px 6px; border-radius: 2px; font: inherit; }
-  .bar input { flex: 1; min-width: 120px; }
-  .bar select:focus, .bar input:focus { outline: 1px solid var(--vscode-focusBorder); }
-  .bar button { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: 0; padding: 4px 8px; border-radius: 2px; cursor: pointer; font: inherit; }
-  .bar button:hover { background: var(--vscode-button-secondaryHoverBackground); }
-  .bar button.on { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
-  .stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 12px; overflow: hidden; }
-  .frame { position: relative; flex: none; overflow: hidden; background: #fff; box-shadow: 0 2px 14px #0005; outline: 1px solid var(--vscode-widget-border, #8884); }
+  svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Toolbar */
+  .bar { display: flex; gap: 6px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--vscode-sideBar-background, var(--vscode-editor-background)); }
+  .field { position: relative; display: flex; align-items: center; height: 26px; border-radius: 4px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border, transparent); }
+  .field[hidden] { display: none; }
+  .field:focus-within { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+  .field svg { position: absolute; left: 7px; color: var(--muted); pointer-events: none; }
+  .field select, .field input { height: 100%; border: 0; background: transparent; color: inherit; font: inherit; outline: none; padding: 0 8px 0 28px; }
+  .field select { max-width: 200px; cursor: pointer; }
+  .field select option { background: var(--vscode-dropdown-background); color: var(--vscode-dropdown-foreground); }
+  .search { flex: 1; min-width: 140px; }
+  .search input { width: 100%; }
+  .search input::placeholder { color: var(--vscode-input-placeholderForeground); }
+  .search kbd { margin-right: 6px; }
+  kbd { font: 10.5px var(--vscode-editor-font-family, monospace); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--line); color: var(--muted); background: var(--vscode-keybindingLabel-background, transparent); white-space: nowrap; }
+  .icon-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 26px; min-width: 26px; padding: 0 6px; border: 0; border-radius: 4px; background: transparent; color: var(--vscode-icon-foreground, var(--vscode-foreground)); cursor: pointer; font: inherit; }
+  .icon-btn:hover { background: var(--vscode-toolbar-hoverBackground, #8882); }
+  .icon-btn:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
+  .icon-btn[aria-pressed="true"] { background: var(--vscode-inputOption-activeBackground, #0078d433); color: var(--vscode-inputOption-activeForeground, inherit); box-shadow: inset 0 0 0 1px var(--vscode-inputOption-activeBorder, transparent); }
+  .icon-btn.spin svg { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .sep { width: 1px; height: 18px; background: var(--line); margin: 0 2px; }
+
+  /* Canvas */
+  .stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden;
+    background-image: radial-gradient(color-mix(in srgb, var(--vscode-foreground) 14%, transparent) 1px, transparent 1px); background-size: 16px 16px; }
+  .frame { position: relative; flex: none; overflow: hidden; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px #0002, 0 8px 28px #0004; outline: 1px solid var(--vscode-widget-border, #8884); }
   #mirror { position: absolute; left: 0; top: 0; transform-origin: 0 0; cursor: pointer; }
   #mirror * { cursor: pointer !important; user-select: none; }
   #overlay { position: absolute; inset: 0; pointer-events: none; }
@@ -179,22 +202,53 @@ class ScreenPreview {
   .ov.err .lbl { background: var(--err); }
   .ov.all .lbl { position: absolute; left: 0; top: 0; bottom: auto; border-radius: 0 0 3px 0; font-size: 10px; line-height: 13px; background: color-mix(in srgb, var(--vscode-editor-background) 85%, transparent); color: var(--vscode-editor-foreground); }
   .ov.inside .lbl { bottom: auto; top: 0; border-radius: 0 0 3px 0; }
-  .tip { position: fixed; pointer-events: none; padding: 3px 7px; background: var(--vscode-editorHoverWidget-background); color: var(--vscode-editorHoverWidget-foreground); border: 1px solid var(--vscode-editorHoverWidget-border); border-radius: 3px; font-size: 12px; display: none; z-index: 10; white-space: nowrap; }
-  .status { padding: 4px 10px 8px; font-size: 12px; color: var(--vscode-descriptionForeground); min-height: 1em; }
-  .status a { color: var(--vscode-textLink-foreground); cursor: pointer; }
-  .empty { max-width: 460px; text-align: center; line-height: 1.6; color: var(--vscode-descriptionForeground); }
-  .empty h2 { font-size: 15px; color: var(--vscode-foreground); }
+  .tip { position: fixed; pointer-events: none; padding: 4px 8px; background: var(--vscode-editorHoverWidget-background); color: var(--vscode-editorHoverWidget-foreground); border: 1px solid var(--vscode-editorHoverWidget-border); border-radius: 4px; box-shadow: 0 2px 8px #0003; font-size: 12px; display: none; z-index: 10; white-space: nowrap; }
+  .tip .bad { color: var(--err); margin-left: 6px; }
+
+  /* Footer */
+  .status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 12px; min-height: 18px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); background: var(--vscode-sideBar-background, var(--vscode-editor-background)); }
+  .status:empty { display: none; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 999px; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); font-size: 11px; line-height: 16px; }
+  .pill i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .pill.err { background: color-mix(in srgb, var(--err) 18%, transparent); color: var(--err); }
+  .pill.match { background: color-mix(in srgb, var(--match) 20%, transparent); color: var(--vscode-foreground); }
+  .pill.match i { background: var(--match); }
+  .status .help { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+  .status .warn { flex-basis: 100%; color: var(--vscode-editorWarning-foreground); }
+
+  /* Empty states */
+  .empty { max-width: 380px; display: grid; justify-items: center; gap: 10px; text-align: center; line-height: 1.55; color: var(--muted); padding: 24px; border-radius: 10px;
+    background: var(--vscode-editor-background); border: 1px solid var(--line); }
+  .empty .ico { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: color-mix(in srgb, var(--vscode-focusBorder) 14%, transparent); color: var(--vscode-focusBorder); }
+  .empty .ico svg { width: 22px; height: 22px; }
+  .empty .ico.spin svg { animation: spin 1s linear infinite; }
+  .empty h2 { margin: 2px 0 0; font-size: 14px; font-weight: 600; color: var(--vscode-foreground); }
+  .empty p { margin: 0; }
+  .empty button { margin-top: 4px; height: 28px; padding: 0 14px; border: 0; border-radius: 4px; cursor: pointer; font: inherit; background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+  .empty button:hover { background: var(--vscode-button-hoverBackground); }
 </style>
 </head>
 <body>
-  <div class="bar">
-    <select id="screen" title="Écran affiché dans Studio"></select>
-    <input id="filter" type="search" placeholder="Rechercher un contrôle… (Entrée : le sélectionner)">
-    <button id="names" title="Afficher le nom et le contour de tous les contrôles">Noms</button>
-    <button id="refresh" title="Actualiser depuis Studio">⟳</button>
+  <div class="bar" role="toolbar" aria-label="Aperçu">
+    <label class="field" title="Écran affiché dans Studio">
+      <svg viewBox="0 0 16 16"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M2 5.5h12"/></svg>
+      <select id="screen" aria-label="Écran"></select>
+    </label>
+    <label class="field search">
+      <svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg>
+      <input id="filter" type="search" placeholder="Rechercher un contrôle" aria-label="Rechercher un contrôle" spellcheck="false">
+      <kbd title="Sélectionner le premier résultat">Entrée</kbd>
+    </label>
+    <span class="sep" aria-hidden="true"></span>
+    <button class="icon-btn" id="names" aria-pressed="false" title="Afficher le nom et le contour de tous les contrôles">
+      <svg viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5" stroke-dasharray="2 2"/><path d="M5 6h6M5 9h4"/></svg>
+    </button>
+    <button class="icon-btn" id="refresh" title="Actualiser depuis Studio">
+      <svg viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 2.5v3h-3"/></svg>
+    </button>
   </div>
   <div class="stage" id="stage"></div>
-  <div class="status" id="status"></div>
+  <div class="status" id="status" aria-live="polite"></div>
   <div class="tip" id="tip"></div>
 <script nonce="${nonce}">
 (() => {
@@ -208,8 +262,19 @@ class ScreenPreview {
   let filter = '';
   let hovered = null;
 
+  const ICONS = {
+    plug: '<path d="M6 2v3M10 2v3M4.5 5h7v3a3.5 3.5 0 0 1-7 0zM8 11.5V14"/>',
+    warn: '<path d="M8 2.5 14 13H2z"/><path d="M8 6.5v3M8 11.2v.1"/>',
+    load: '<path d="M8 2a6 6 0 1 0 6 6"/>',
+    screen: '<rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M6 6.5l4 4M10 6.5l-4 4"/>',
+  };
+  const icon = (name) => '<svg viewBox="0 0 16 16">' + ICONS[name] + '</svg>';
+
   $('names').onclick = () => { saved.names = !saved.names; vscode.setState(saved); render(); };
-  $('refresh').onclick = () => vscode.postMessage({ type: 'refresh' });
+  $('refresh').onclick = () => {
+    $('refresh').classList.add('spin');
+    vscode.postMessage({ type: 'refresh' });
+  };
   $('screen').onchange = (e) => vscode.postMessage({ type: 'screen', name: e.target.value });
   $('filter').oninput = (e) => { filter = e.target.value.trim().toLowerCase(); render(); };
   $('filter').onkeydown = (e) => {
@@ -226,6 +291,7 @@ class ScreenPreview {
     if (m.html) html = m.html;
     if (!m.hasHtml) html = null;
     if (m.focus) { $('filter').value = m.focus; filter = m.focus.toLowerCase(); }
+    setTimeout(() => $('refresh').classList.remove('spin'), 300);
     state = m;
     render();
   });
@@ -245,22 +311,34 @@ class ScreenPreview {
     return e;
   }
 
-  function empty(title, text, link) {
+  function empty(ico, title, text, action) {
     rendered = null;
     const stage = $('stage');
     stage.textContent = '';
     const box = el('div', 'empty');
-    box.append(el('h2', null, title), el('div', null, text));
-    stage.append(box);
-    if (link) {
-      const a = el('a', null, link[0]);
-      a.onclick = () => vscode.postMessage({ type: 'command', command: link[1] });
-      $('status').append(a);
+    const i = el('div', 'ico' + (ico === 'load' ? ' spin' : ''));
+    i.innerHTML = icon(ico);
+    box.append(i, el('h2', null, title));
+    if (text) box.append(el('p', null, text));
+    if (action) {
+      const b = el('button', null, action[0]);
+      b.onclick = () => vscode.postMessage(action[1]);
+      box.append(b);
     }
+    stage.append(box);
   }
 
+  function pill(cls, text) {
+    const p = el('span', 'pill' + (cls ? ' ' + cls : ''));
+    if (cls) p.append(el('i'));
+    p.append(text);
+    return p;
+  }
+
+  const plural = (n, one, many) => n + ' ' + (n > 1 ? many : one);
+
   function render() {
-    $('names').classList.toggle('on', !!saved.names);
+    $('names').setAttribute('aria-pressed', String(!!saved.names));
     $('status').textContent = '';
     if (!state) return;
     const mirror = state.mirror;
@@ -270,17 +348,20 @@ class ScreenPreview {
     if (mirror && mirror.screen && !screens.includes(mirror.screen)) screens.unshift(mirror.screen);
     sel.textContent = '';
     for (const s of screens) sel.append(new Option(s, s, false, !!mirror && s === mirror.screen));
-    sel.hidden = !screens.length;
+    sel.closest('.field').hidden = !screens.length;
 
-    if (!state.connected) return empty('Studio non connecté', 'Ouvre ton app dans Power Apps Studio avec l’extension navigateur active : l’écran s’affichera ici.', ['Ouvrir le guide de démarrage', 'powerappsBridge.openWalkthrough']);
-    if (state.error && !html) return empty('Aperçu indisponible', 'Studio n’a pas répondu (' + state.error + '). Recharge l’extension navigateur et l’onglet Studio, puis actualise.');
-    if (!mirror) return empty('Chargement…', '');
+    const command = (c) => ({ type: 'command', command: c });
+    if (!state.connected) return empty('plug', 'Studio non connecté', 'Ouvre ton app dans Power Apps Studio avec l’extension navigateur active : l’écran s’affichera ici.', ['Guide de démarrage', command('powerappsBridge.openWalkthrough')]);
+    if (state.error && !html) return empty('warn', 'Aperçu indisponible', 'Studio n’a pas répondu (' + state.error + '). Recharge l’extension navigateur et l’onglet Studio, puis réessaie.', ['Réessayer', { type: 'refresh' }]);
+    if (!mirror) return empty('load', 'Chargement de l’écran…', '');
     if (!html) {
       return empty(
+        'screen',
         'Écran introuvable',
         mirror.controlsFound
           ? 'Des contrôles sont visibles mais aucun écran n’a été reconnu. Sélectionne un écran dans l’arborescence de Studio.'
-          : 'Le canevas de Studio n’a pas été trouvé. Le « Diagnostic de la page » (menu de l’extension navigateur) aide à comprendre pourquoi.'
+          : 'Le canevas de Studio n’a pas été trouvé. Le diagnostic de la page (menu de l’extension navigateur) aide à comprendre pourquoi.',
+        ['Réessayer', { type: 'refresh' }]
       );
     }
 
@@ -311,11 +392,14 @@ class ScreenPreview {
     overlays();
 
     const hits = matches();
-    const parts = [controls().length + ' contrôle(s)'];
-    if (state.errors.length) parts.push(state.errors.length + ' en erreur');
-    if (filter) parts.push(hits.length + ' correspondance(s)');
-    $('status').append(parts.join(' · ') + '. Clic : sélectionner dans Studio et ouvrir sa formule.');
-    if (mirror.truncated) $('status').append(el('div', null, 'Écran très chargé : une partie des éléments n’est pas reproduite.'));
+    const status = $('status');
+    status.append(pill('', plural(controls().length, 'contrôle', 'contrôles')));
+    const errs = state.errors.filter((n) => controls().includes(n)).length;
+    if (errs) status.append(pill('err', plural(errs, 'en erreur', 'en erreur')));
+    if (filter) status.append(pill('match', plural(hits.length, 'résultat', 'résultats')));
+    const help = el('span', 'help', 'Clic : sélectionner dans Studio et ouvrir la formule');
+    status.append(help);
+    if (mirror.truncated) status.append(el('div', 'warn', 'Écran très chargé : une partie des éléments n’est pas reproduite.'));
   }
 
   function layout() {
@@ -377,7 +461,8 @@ class ScreenPreview {
     const name = c ? c.getAttribute(NAME) : null;
     if (name !== hovered) { hovered = name; overlays(); }
     if (!name) { tip.style.display = 'none'; return; }
-    tip.textContent = name + (state.errors.includes(name) ? '  ⚠ erreur de formule' : '');
+    tip.textContent = name;
+    if (state.errors.includes(name)) tip.append(el('span', 'bad', '⚠ erreur de formule'));
     tip.style.display = 'block';
     tip.style.left = Math.min(e.clientX + 12, window.innerWidth - tip.offsetWidth - 4) + 'px';
     tip.style.top = e.clientY + 14 + 'px';

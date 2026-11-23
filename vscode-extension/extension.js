@@ -5,6 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
 const { ScreenPreview } = require('./preview');
+const { Inspector } = require('./inspector');
+const { Outline } = require('./outline');
 const FX = require('./powerfx-lang');
 const { parsePaYaml } = require('./pa-yaml');
 
@@ -139,6 +141,8 @@ let wasConnected = false;
 function updateStatus() {
   scheduleMirrorState();
   if (!statusItem) return;
+  inspector.post();
+  outline.post();
   const connected = openClients().length > 0;
   vscode.commands.executeCommand('setContext', 'powerappsBridge.connected', connected);
   vscode.commands.executeCommand('setContext', 'powerappsBridge.hasSelection', !!current && connected);
@@ -163,7 +167,7 @@ function updateStatus() {
         '[Guide de démarrage](command:powerappsBridge.openWalkthrough) · [Journal](command:powerappsBridge.showLog)'
     );
   } else {
-    statusItem.text = current ? `$(symbol-class) ${current.control}` : '$(plug) Power Apps';
+    statusItem.text = current ? `$(symbol-class) ${current.control}` : '$(pass-filled) Power Apps';
     tip.appendMarkdown(
       '**Power Apps X VS Code** : connecté.\n\n' +
         (current ? `Sélection : \`${current.control}.${current.property}\`\n\n` : '') +
@@ -178,7 +182,7 @@ function updateStatus() {
   statusItem.command = current && connected ? 'powerappsBridge.goToControl' : 'powerappsBridge.help';
   if (current && connected && server) {
     propertyItem.text = `$(symbol-property) ${current.property} $(chevron-down)`;
-    propertyItem.tooltip = 'Switch property (Ctrl+Alt+P)';
+    propertyItem.tooltip = 'Changer de propriété (Ctrl+Alt+P)';
     propertyItem.show();
   } else {
     propertyItem.hide();
@@ -316,10 +320,6 @@ function exportApp({ quiet = false, timeoutMs = 180000 } = {}) {
   return exporting;
 }
 
-/** All formula errors of the app → _state.json and the Problems view. */
-async function refreshAppErrors({ quiet = false } = {}) {
-  try {
-    appErrorList = (await request('appErrors', {}, 60000)) || [];
 /** Export at connection time: Studio may still be loading, so retry a few times before giving up. */
 let exportRetryTimer = null;
 function exportWhenReady(attempt = 0) {
@@ -333,6 +333,10 @@ function exportWhenReady(attempt = 0) {
   }, attempt ? 3000 : 1500);
 }
 
+/** All formula errors of the app → _state.json and the Problems view. */
+async function refreshAppErrors({ quiet = false } = {}) {
+  try {
+    appErrorList = (await request('appErrors', {}, 60000)) || [];
   } catch (e) {
     if (!quiet) vscode.window.showWarningMessage(`Power Apps : ${e.message}`);
     return appErrorList;
@@ -364,6 +368,7 @@ function exportWhenReady(attempt = 0) {
   }
   scheduleMirrorState();
   appTree.refreshView();
+  updateErrorBadge();
   return appErrorList;
 }
 
@@ -786,6 +791,8 @@ async function handleMessage(ws, msg) {
       }
       setTimeout(flushUnsentEdits, 1500);
       if (config().get('loadFullTree', true)) setTimeout(() => openClients().length && loadFullTree({ quiet: true }), 2500);
+      // The export reads Studio's document, not the tree view: start it now rather than after the tree load.
+      if (!lastExport && config().get('exportOnConnect', true)) exportWhenReady();
       break;
     case 'selection':
       activeClient = ws;
@@ -821,7 +828,7 @@ async function handleMessage(ws, msg) {
       }
       if (!msg.ok) {
         log(`Studio refused the edit: ${msg.error}`);
-        vscode.window.setStatusBarMessage(`$(warning) Power Apps: ${msg.error}`, 6000);
+        vscode.window.setStatusBarMessage(`$(warning) Power Apps : ${msg.error}`, 6000);
       }
       break;
     case 'diagnostics':
@@ -852,8 +859,6 @@ function remember(msg) {
 
 async function onSelection(msg) {
   const uri = remember(msg);
-      // The export reads Studio's document, not the tree view: start it now rather than after the tree load.
-      if (!lastExport && config().get('exportOnConnect', true)) exportWhenReady();
   const controlChanged = !current || current.control !== msg.control;
   current = { control: msg.control, property: msg.property, uri };
   updateStatus();
@@ -1076,7 +1081,20 @@ function onDiagnostics(msg) {
     appTree.refreshView(); // error icons in the Power Apps views
     propsView.refreshView();
     screenPreview.post();
+    updateErrorBadge();
   }
+}
+
+/** Error count on the Power Apps icon of the activity bar. */
+function updateErrorBadge() {
+  const n = errorFormulaCount();
+  outline.setBadge(n ? { value: n, tooltip: `${n} formule${n > 1 ? 's' : ''} en erreur` } : undefined);
+}
+
+function errorFormulaCount() {
+  let n = 0;
+  diagnostics.forEach((_uri, list) => (n += list.length ? 1 : 0));
+  return n;
 }
 
 async function openFormula(control, property) {
@@ -1095,7 +1113,7 @@ async function goTo(control, property) {
 }
 
 async function cmdGoToProperty() {
-  if (!current) return vscode.window.showWarningMessage('Power Apps: no control selected in Studio yet');
+  if (!current) return vscode.window.showWarningMessage('Power Apps : aucun contrôle sélectionné dans Studio pour l’instant.');
   const control = current.control;
   let props;
   try {
@@ -1104,13 +1122,10 @@ async function cmdGoToProperty() {
     propsView.refreshView();
   } catch (e) {
     props = propertiesByControl.get(control);
-    if (!props) return vscode.window.showWarningMessage(`Power Apps: ${e.message}`);
+    if (!props) return vscode.window.showWarningMessage(`Power Apps : ${e.message}`);
   }
-  const pick = await vscode.window.showQuickPick(
-    props.map((p) => ({ label: p, description: p === current.property ? 'current' : undefined })),
-    { placeHolder: `Property of ${control}` }
-  );
-  if (pick) await goTo(control, pick.label);
+  const pick = await pickPropertyOf(control, props);
+  if (pick) await goTo(control, pick);
 }
 
 const treeNames = () => treeControls.map((c) => (typeof c === 'string' ? c : c.name));
@@ -1225,6 +1240,17 @@ function preview(text) {
   return one.length > 70 ? one.slice(0, 69) + '…' : one;
 }
 
+/** control -> number of its formulas in error, computed once per call. */
+function errorCountsByControl() {
+  const out = new Map();
+  diagnostics.forEach((uri, list) => {
+    if (!list.length) return;
+    const m = meta.get(uri.toString());
+    if (m) out.set(m.control, (out.get(m.control) || 0) + 1);
+  });
+  return out;
+}
+
 const controlErrors = (name) =>
   [...meta.values()].filter((m) => m.control === name && (diagnostics.get(formulaUri(m.control, m.property)) || []).length);
 
@@ -1270,6 +1296,9 @@ class AppTreeProvider {
     this.rebuild();
     this._emitter.fire();
     scheduleMirrorState(); // _app.json
+    breadcrumbLens.refresh();
+    if (inspector) inspector.post();
+    if (outline) outline.post();
   }
 
   getChildren(node) {
@@ -1306,12 +1335,12 @@ class AppTreeProvider {
       ? new vscode.ThemeIcon('error', new vscode.ThemeColor('list.errorForeground'))
       : new vscode.ThemeIcon(type.icon, isCurrent || inCurrent ? new vscode.ThemeColor('charts.blue') : undefined);
     const parts = [];
-    if (isCurrent) parts.push('● sélectionné');
-    parts.push(type.label);
-    if (node.children.length) parts.push(`${countDescendants(node)} contrôle${countDescendants(node) > 1 ? 's' : ''}`);
+    // Kept short: the icon already says the type and the error state, the description adds what it can't.
+    const n = node.children.length ? countDescendants(node) : 0;
+    parts.push(n ? `${type.label} · ${n}` : type.label);
     if (errors.length) parts.push(`${errors.length} erreur${errors.length > 1 ? 's' : ''}`);
     if (fxTools && node.level > 1 && fxTools.isDefaultName(node.name)) parts.push('nom par défaut');
-    it.description = parts.join(' · ');
+    it.description = (isCurrent ? '● ' : '') + parts.join(' · ');
     const path = nodePath(node);
     const md = new vscode.MarkdownString(undefined, true);
     md.isTrusted = true;
@@ -1399,6 +1428,7 @@ class PropsProvider {
 
   refreshView() {
     this._emitter.fire();
+    if (inspector) inspector.post(); // the "Contrôle" view shows the same data
   }
 
   /** Small or not yet loaded lists stay flat; full lists from Studio are grouped by category. */
@@ -1494,8 +1524,128 @@ const screenPreview = new ScreenPreview({
   connected: () => openClients().length > 0,
   config,
 });
-let treeView;
+let treeView; // stays undefined: the "Application" view is a webview now (outline.js)
 let propsTreeView;
+
+/** What the "Contrôle" view shows: the selected control, where it sits, and its properties by category. */
+function inspectorState() {
+  const connected = openClients().length > 0;
+  const control = current && current.control !== 'Unknown' ? current.control : null;
+  if (!control) return { connected, control: null };
+  const node = appTree.byName.get(control) || { name: control, level: 2, children: [] };
+  const listed = propertiesByControl.get(control);
+  const known = [...meta.values()].filter((m) => m.control === control).map((m) => m.property);
+  const names = listed ? [...listed, ...known.filter((p) => !listed.includes(p))] : [...new Set(known)].sort();
+  const props = names.map((p) => {
+    const formula = knownFormula(control, p);
+    return {
+      name: p,
+      group: propertyGroup(p).key,
+      formula: formula === undefined ? null : formula.slice(0, 2000),
+      preview: formula === undefined ? '' : preview(formula),
+      errors: (diagnostics.get(formulaUri(control, p)) || []).map((d) => d.message),
+    };
+  });
+  const suggestion = fxTools && node.level > 1 && fxTools.isDefaultName(control) ? fxTools.suggestName(control) : null;
+  return {
+    connected,
+    control,
+    typeLabel: controlType(node).label, // not "type": the message's own type is "state"
+    typeKey: controlType(node).key,
+    path: nodePath(node),
+    property: current.property,
+    props,
+    groups: PROPERTY_GROUPS.map((g) => ({ key: g.key, label: g.label })),
+    listed: !!listed,
+    exported: !!lastExport,
+    refs: fxTools ? fxTools.references(control) : 0,
+    suggestion: suggestion || null,
+  };
+}
+
+/** What the "Application" view shows: every screen and control, depth-first, with what each row needs. */
+function outlineState() {
+  const rows = [];
+  let screens = 0;
+  const errorsOf = errorCountsByControl();
+  const walk = (nodes, level) => {
+    for (const n of nodes) {
+      if (n.kind === 'group') {
+        rows.push({ name: n.name, level, group: true });
+      } else {
+        const type = controlType(n);
+        if (level === 1) screens++;
+        rows.push({
+          name: n.name,
+          level,
+          typeKey: type.key,
+          typeLabel: type.label,
+          errors: errorsOf.get(n.name) || 0,
+          count: n.children.length ? countDescendants(n) : 0,
+          def: !!(fxTools && level > 1 && fxTools.isDefaultName(n.name)),
+          path: nodePath(n).join(' › '),
+        });
+      }
+      walk(n.children, level + 1);
+    }
+  };
+  walk(appTree.rootNodes || [], 1);
+  const cur = current && current.control !== 'Unknown' ? current.control : null;
+  const curNode = cur && appTree.byName.get(cur);
+  return {
+    server: !!server,
+    connected: openClients().length > 0,
+    loading: !!crawling,
+    rows,
+    screens,
+    controls: rows.filter((r) => !r.group).length - screens,
+    errors: errorFormulaCount(),
+    current: cur,
+    screen: curNode ? nodePath(curNode)[0] || curNode.name : null,
+  };
+}
+
+const outline = new Outline({
+  state: outlineState,
+  select: (name) => goTo(name, undefined),
+});
+
+const inspector = new Inspector({
+  state: inspectorState,
+  open: (control, property) => cmdOpenFormula(control, property),
+  select: (name) => goTo(name, undefined),
+});
+
+/**
+ * Breadcrumb above each formula: Screen › … › Control · Property, every part clickable, plus the
+ * actions that matter while editing (switch property, show on screen, references).
+ */
+const breadcrumbLens = {
+  _emitter: new vscode.EventEmitter(),
+  get onDidChangeCodeLenses() {
+    return this._emitter.event;
+  },
+  refresh() {
+    this._emitter.fire();
+  },
+  provideCodeLenses(doc) {
+    const m = meta.get(doc.uri.toString());
+    if (!m || m.control === 'Unknown') return [];
+    const top = new vscode.Range(0, 0, 0, 0);
+    const lens = (title, command, args, tooltip) => new vscode.CodeLens(top, { title, command, arguments: args, tooltip });
+    const node = appTree.byName.get(m.control) || { name: m.control, level: 2, children: [] };
+    const type = controlType(node);
+    const out = nodePath(node).map((p, i) =>
+      lens(`${i ? '› ' : '$(window) '}${p}`, 'powerappsBridge.selectControl', [p], `Sélectionner ${p} dans Studio`)
+    );
+    out.push(lens(`› $(${type.icon}) ${m.control}`, 'powerappsBridge.selectControl', [m.control], `${type.label} · sélectionner dans Studio`));
+    out.push(lens(`· ${m.property} $(chevron-down)`, 'powerappsBridge.pickProperty', [m.control], 'Changer de propriété (Ctrl+Alt+P)'));
+    out.push(lens('$(eye) Aperçu', 'powerappsBridge.revealInPreview', [{ name: m.control }], 'Montrer dans l’aperçu de l’écran'));
+    const refs = fxTools ? fxTools.references(m.control) : 0;
+    if (refs) out.push(lens(`$(references) ${refs} référence${refs > 1 ? 's' : ''}`, 'powerappsBridge.findUsages', [m.control], 'Formules qui utilisent ce contrôle'));
+    return out;
+  },
+};
 let fxTools = null; // fx-tools.js (references, rename, lint, naming…), set in activate()
 let treeRefreshTimer = null;
 let lastPropsControl = null;
@@ -1534,6 +1684,7 @@ function mergeVisible(full, visible) {
 /** Loads every control of the app (Studio's tree is expanded/scrolled, then restored). */
 async function loadFullTree({ quiet = false } = {}) {
   if (crawling) return crawling;
+  setTimeout(() => outline.post(), 0); // shows the loading state
   crawling = vscode.window
     .withProgress(
       { location: { viewId: 'powerappsBridge.tree' }, title: 'Chargement de toute l’arborescence…' },
@@ -1609,6 +1760,7 @@ async function refreshTree({ full = false, expand = false, quiet = false } = {})
 }
 
 function revealCurrent() {
+  outline.post(); // the view follows the selection itself
   if (!treeView || !treeView.visible || !current) return;
   const node = appTree.byName.get(current.control);
   if (node) treeView.reveal(node, { select: true, focus: false, expand: false }).then(undefined, () => {});
@@ -1619,7 +1771,7 @@ async function loadProperties({ quiet = false } = {}) {
   try {
     propertiesByControl.set(current.control, await request('listProperties'));
   } catch (e) {
-    if (!quiet) vscode.window.showWarningMessage(`Power Apps: ${e.message}`);
+    if (!quiet) vscode.window.showWarningMessage(`Power Apps : ${e.message}`);
   }
   propsView.refreshView();
   revealCurrentProperty();
@@ -1701,13 +1853,49 @@ async function cmdPickProperty(control) {
   if (!current || current.control !== control) await goTo(control, undefined);
   if (!propertiesByControl.has(control)) await loadProperties({ quiet: true });
   const props = propertiesByControl.get(control) || [...meta.values()].filter((m) => m.control === control).map((m) => m.property);
-  const items = props.map((p) => {
-    const f = knownFormula(control, p);
-    const g = propertyGroup(p);
-    return { label: `$(${g.icon}) ${p}`, property: p, description: g.label, detail: f !== undefined ? preview(f) : undefined };
+  const pick = await pickPropertyOf(control, props);
+  if (pick) await cmdOpenFormula(control, pick);
+}
+
+/** Quick pick of a control's properties, grouped by category, with the current one and formula previews. */
+async function pickPropertyOf(control, props) {
+  const items = [];
+  for (const g of PROPERTY_GROUPS) {
+    const inGroup = props.filter((p) => propertyGroup(p) === g);
+    if (!inGroup.length) continue;
+    items.push({ label: g.label, kind: vscode.QuickPickItemKind.Separator });
+    for (const p of inGroup) {
+      const f = knownFormula(control, p);
+      const isCurrent = current && current.control === control && current.property === p;
+      const errors = hasErrors(control, p);
+      items.push({
+        label: `$(${errors ? 'error' : /^On[A-Z]/.test(p) ? 'zap' : 'symbol-property'}) ${p}`,
+        property: p,
+        description: [isCurrent ? 'actuelle' : '', errors ? 'en erreur' : ''].filter(Boolean).join(' · ') || undefined,
+        detail: f !== undefined ? preview(f) : undefined,
+        picked: isCurrent,
+      });
+    }
+  }
+  const qp = vscode.window.createQuickPick();
+  qp.title = control;
+  qp.placeholder = 'Rechercher une propriété (nom ou formule)';
+  qp.matchOnDetail = true;
+  qp.items = items;
+  const cur = items.find((i) => i.picked);
+  if (cur) qp.activeItems = [cur];
+  return new Promise((resolve) => {
+    qp.onDidAccept(() => {
+      const sel = qp.selectedItems[0] || qp.activeItems[0];
+      resolve(sel && sel.property);
+      qp.hide();
+    });
+    qp.onDidHide(() => {
+      resolve(undefined);
+      qp.dispose();
+    });
+    qp.show();
   });
-  const pick = await vscode.window.showQuickPick(items, { placeHolder: `Propriété de ${control}`, matchOnDescription: true });
-  if (pick) await cmdOpenFormula(control, pick.property);
 }
 
 async function cmdRenameControl(node) {
@@ -2021,6 +2209,8 @@ function activate(context) {
   statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   propertyItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
   propertyItem.command = 'powerappsBridge.goToProperty';
+  statusItem.name = 'Power Apps : connexion et contrôle';
+  propertyItem.name = 'Power Apps : propriété';
   diagnostics = vscode.languages.createDiagnosticCollection('powerfx');
   statusItem.show();
 
@@ -2035,10 +2225,9 @@ function activate(context) {
     vscode.commands.registerCommand('powerappsBridge.goToProperty', cmdGoToProperty),
     vscode.commands.registerCommand('powerappsBridge.goToControl', cmdGoToControl),
     vscode.commands.registerCommand('powerappsBridge.goToFormula', cmdGoToFormula),
-    (treeView = vscode.window.createTreeView('powerappsBridge.tree', { treeDataProvider: appTree, showCollapseAll: true })),
-    (propsTreeView = vscode.window.createTreeView('powerappsBridge.props', { treeDataProvider: propsView })),
-    treeView.onDidChangeVisibility(() => revealCurrent()),
-    propsTreeView.onDidChangeVisibility(() => updateViews()),
+    vscode.window.registerWebviewViewProvider('powerappsBridge.tree', outline, { webviewOptions: { retainContextWhenHidden: true } }),
+    vscode.window.registerWebviewViewProvider('powerappsBridge.props', inspector, { webviewOptions: { retainContextWhenHidden: true } }),
+    vscode.languages.registerCodeLensProvider({ scheme: SCHEME }, breadcrumbLens),
     vscode.commands.registerCommand('powerappsBridge.loadProperties', () => loadProperties()),
     vscode.commands.registerCommand('powerappsBridge.refreshTree', () => refreshTree({ full: true })),
     vscode.commands.registerCommand('powerappsBridge.expandTree', () => refreshTree({ expand: true })),
@@ -2049,7 +2238,7 @@ function activate(context) {
     ),
     vscode.commands.registerCommand('powerappsBridge.renameControl', cmdRenameControl),
     vscode.commands.registerCommand('powerappsBridge.pickProperty', cmdPickProperty),
-    vscode.commands.registerCommand('powerappsBridge.selectControl', (name) => goTo(name, undefined)),
+    vscode.commands.registerCommand('powerappsBridge.selectControl', (name) => goTo((name && name.name) || name, undefined)),
     vscode.commands.registerCommand('powerappsBridge.openFormula', cmdOpenFormula),
     vscode.commands.registerCommand('powerappsBridge.showPreview', () => screenPreview.show()),
     vscode.commands.registerCommand('powerappsBridge.revealInPreview', (node) =>
@@ -2075,7 +2264,7 @@ function activate(context) {
     vscode.commands.registerCommand('powerappsBridge.toggleFollow', async () => {
       const next = !config().get('followSelection', true);
       await config().update('followSelection', next, vscode.ConfigurationTarget.Global);
-      vscode.window.setStatusBarMessage(`Power Apps: follow selection ${next ? 'on' : 'off'}`, 3000);
+      vscode.window.setStatusBarMessage(`$(${next ? 'eye' : 'eye-closed'}) Power Apps : suivi de la sélection ${next ? 'activé' : 'désactivé'}`, 3000);
       updateStatus();
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {
@@ -2112,7 +2301,10 @@ function activate(context) {
       if (root) mirrorWrite(path.join(root, name), text);
     },
   });
-  fsProvider.onChanged = () => fxTools.onFormulasChanged();
+  fsProvider.onChanged = () => {
+    fxTools.onFormulasChanged();
+    inspector.post(); // formula previews
+  };
 
   startServer();
   mirrorAll(); // workspace folder: guide, .gitignore, disk watcher
